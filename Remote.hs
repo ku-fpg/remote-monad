@@ -42,26 +42,16 @@ instance Applicative (Packet c p) where
   m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
 
 promoteStrongPacket :: forall m c p a . Monad m => (forall a . StrongPacket c p a -> m a) -> (Packet c p a -> m a)
-promoteStrongPacket f p = do
-    (cs,a) <- go p
-    when (not (null cs)) -- you do not need to check this, if the lower level 
-        $ f 
-        $ foldr SP_Command (SP_Pure ()) 
-        $ cs
-    return a
+promoteStrongPacket f p = go p $ \ cs -> f . cs . SP_Pure 
   where
-    go :: forall a . Packet c p a -> m ([c],a)
-    go (Pure a)        = pure ([],a)
-    go (Command g c)   = do
-      (cs,r) <- go g
-      return $ (cs ++ [c],r)
-    go (Procedure g p) = do
-      (cs,r1) <- go g
-      r2 <- f $ foldr SP_Command (SP_Procedure p) cs
-      return $ ([],r1 r2)
+    go :: forall a r k b . Packet c p a -> ((forall b . StrongPacket c p b -> StrongPacket c p b) -> a -> m b) -> m b
+    go (Pure a)        k = k id a
+    go (Command g c)   k = go g $ \ cs -> k (cs . SP_Command c)
+    go (Procedure g p) k = go g $ \ cs r -> do
+        a <- f $ cs $ SP_Procedure p
+        k id (r a)
 
---promoteStrongPacket f (Procedure g p) = promoteStrongPacket f g <*> f (
---promoteStrongPacket f (Pure a)       = pure a
+
 ------
 data WR c p a = WR ((forall a . Packet c p a -> IO a) -> IO a)
 
