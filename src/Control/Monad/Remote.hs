@@ -1,5 +1,7 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 {-|
 Module:      Control.Monad.Remote.Packet.Weak
@@ -14,7 +16,9 @@ module Control.Monad.Remote where
 
 import Control.Monad.Remote.Packet.Applicative as Packet
 import Control.Monad.Remote.Packet.Weak as Weak
-import Control.Monad.Remote.Packet.Weak as Strong
+import Control.Monad.Remote.Packet.Strong as Strong
+
+import Control.Natural
 
 data Remote c p a where
    Appl        :: Packet.Packet c p a -> Remote c p a
@@ -39,3 +43,12 @@ command = Appl . Packet.Command (pure ())
 procedure :: p a -> Remote c p a
 procedure = Appl . Packet.Procedure (pure id)
 
+runWeak :: forall m c p a f . (Weak.WeakSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+runWeak f (Appl g)   = Packet.toPacket (Strong.toPacket f) g
+runWeak f (Bind g k) = Packet.toPacket (Strong.toPacket f) g >>= runWeak f . k
+
+runStrong :: forall m c p a f . (Strong.StrongSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+runStrong = undefined
+
+--runStrongApplicative :: forall m c p a f . (Applicative.ApplicativeSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+--runStrongApplicative = undefined
