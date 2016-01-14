@@ -14,6 +14,8 @@ Portability: GHC
 
 module Control.Remote.Applicative where
 
+import Control.Monad.Trans.State.Strict
+
 import qualified Control.Remote.Monad.Packet.Strong as Strong
 import           Control.Remote.Monad.Packet.Strong (Strong)
 import qualified Control.Remote.Monad.Packet.Weak as Weak
@@ -61,9 +63,6 @@ runWeakApplicative f (Pure        a) = pure a
 instance SendApplicative Strong where
   sendApplicative = runStrongApplicative
 
-instance SendApplicative Remote where
-  sendApplicative = id
-
 -- promote a Strong packet transport, into an Applicative packet transport.
 -- Note this unbundles the Applicative packet, but does provide the Applicative API.
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
@@ -78,3 +77,15 @@ runStrongApplicative f p = go p $ \ cs a -> do
         a <- f $ cs $ Strong.Procedure p
         k id (r a)
 
+instance SendApplicative Remote where
+  sendApplicative = id
+
+--newtype StrongState a = StrongState (HStrong c p -> (HStrong c p,a)) 
+
+-- 'simulates the Remote, to see if it only contains commands', and if so,
+-- returns the static result. The commands still need executed.
+
+superCommand :: Remote c p a -> Maybe a
+superCommand (Pure a)        = Just a
+superCommand (Command g _)   = superCommand g
+superCommand (Procedure _ _) = Nothing

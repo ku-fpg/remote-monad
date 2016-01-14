@@ -32,3 +32,6 @@ sendStrong f (Command c pk) = f (Weak.Command c)   *> sendStrong f pk
 sendStrong f (Procedure p)  = f (Weak.Procedure p)
 sendStrong f (Pure a)       = pure a
 
+-- A Hughes-style version of 'Strong', with efficent append.
+newtype HStrong c p = HStrong (Strong c p ~> Strong c p)
+

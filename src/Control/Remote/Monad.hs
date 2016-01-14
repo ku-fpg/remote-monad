@@ -47,22 +47,46 @@ runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (Remote c p ~>
 runWeakMonad f (Appl g)   = A.sendApplicative f g
 runWeakMonad f (Bind g k) = A.sendApplicative f g >>= runWeakMonad f . k
 
--- It would make more sense directly interpreate the A.Remote.
---runWeakWP :: (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
---runWeakWP f g = runWeakSP (Strong.toPacket f) g
+runStrongMonad :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
+runStrongMonad f p = go p $ \ cs a -> do
+    f $ cs $ Strong.Pure ()
+    return a
+  where
+    go :: forall a r k b . Remote c p a -> ((forall b . Strong c p b -> Strong c p b) -> a -> m b) -> m b
+    go (Appl app)    k = go' app k
+    go (Bind app k0) k = go' app $ \ cs r -> go (k0 r) k -- cs is ignored ==> WRONG
 
---runMonad :: (Monad m) => (Packet.Remote c p ~> Local st m) -> (Remote c p ~> Local st m)
---runMonad f (Appl g)   = f g
---runMonad f (Bind g k) = f g >>= runMonad f . k
+
+    go' :: forall a r k b . A.Remote c p a -> ((forall b . Strong c p b -> Strong c p b) -> a -> m b) -> m b
+    go' (A.Pure a)        k = k id a
+    go' (A.Command g c)   k = go' g $ \ cs -> k (cs . Strong.Command c)
+    go' (A.Procedure g p) k = go' g $ \ cs r -> do
+        a <- f $ cs $ Strong.Procedure p
+        k id (r a)
+{-
+runApplicativeMonad :: forall m c p . (Monad m) => (A.Remote c p ~> m) -> (Remote c p ~> m)
+runApplicativeMonad f p = go p $ \ cs a -> do
+    f $ cs $ pure ()
+    return a
+  where
+    go :: forall a r k b . Remote c p a -> ((forall b . A.Remote c p b -> A.Remote c p b) -> a -> m b) -> m b
+    go (Appl app)    k = go' app k
+    go (Bind app k0) k = go' app $ \ cs r -> go (k0 r) k
+
+    go' :: forall a r k b . A.Remote c p a -> ((forall b . A.Remote c p b -> A.Remote c p b) -> a -> m b) -> m b
+    go' ap k = case A.superCommand ap of
+                  Nothing -> do
+                      a <- f ( ap)
+                      k id
+                  do a <- runP (p0 *> p)
+                                runSuper' (k a) (Pure ())
+                  Just a -> k (\ r -> r <* ap) a
 
 {-
-runMonad :: (Monad m) => (forall a . A.Remote c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))
-runMonad f (Appl g)   st0 = f g st0
-runMonad f (Bind g k) st0 = f g st0 >>= \ (a,st1) -> runMonad f (k a) st1
+        go' (A.Pure a)        k = k id a
+    go' (A.Command g c)   k = go' g $ \ cs -> k (cs . Strong.Command c)
+    go' (A.Procedure g p) k = go' g $ \ cs r -> do
+        a <- f $ cs $ Strong.Procedure p
+        k id (r a)
 -}
-
-runStrong :: forall m c p a f . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
-runStrong = undefined
-
---runStrongApplicative :: forall m c p a f . (Applicative.ApplicativeSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)
---runStrongApplicative = undefined
+-}
