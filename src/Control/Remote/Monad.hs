@@ -14,15 +14,15 @@ Portability: GHC
 
 module Control.Remote.Monad where
 
-import qualified Control.Remote.Applicative as Packet
+import qualified Control.Remote.Applicative as A
 import Control.Remote.Monad.Packet.Weak as Weak
 import Control.Remote.Monad.Packet.Strong as Strong
 
 import Control.Natural
 
 data Remote c p a where
-   Appl        :: Packet.Remote c p a -> Remote c p a
-   Bind        :: Packet.Remote c p a -> (a -> Remote c p b) -> Remote c p b
+   Appl        :: A.Remote c p a -> Remote c p a
+   Bind        :: A.Remote c p a -> (a -> Remote c p b) -> Remote c p b
   
 instance Functor (Remote c p) where
   fmap f m = pure f <*> m
@@ -38,25 +38,16 @@ instance Monad (Remote c p) where
   Bind m k >>= k2 = Bind m (\ a -> k a >>= k2)
 
 command :: c -> Remote c p ()
-command = Appl . Packet.Command (pure ())
+command = Appl . A.command
 
 procedure :: p a -> Remote c p a
-procedure = Appl . Packet.Procedure (pure id)
+procedure = Appl . A.procedure 
 
-{-
-runWeak :: forall m c p a f . (Monad m) => (Weak.Packet c p ~> m) -> (Remote c p ~> m)
-runWeak f (Appl g)   = Packet.toPacket (Strong.toPacket f) g
-runWeak f (Bind g k) = Packet.toPacket (Strong.toPacket f) g >>= runWeak f . k
--}
+runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
+runWeakMonad f (Appl g)   = A.sendApplicative f g
+runWeakMonad f (Bind g k) = A.sendApplicative f g >>= runWeakMonad f . k
 
-runWeakAP :: forall m c p a . (Monad m) => (Packet.Remote c p ~> m) -> (Remote c p ~> m)
-runWeakAP f (Appl g)   = f g
-runWeakAP f (Bind g k) = f g >>= runWeakAP f . k
-
-runWeakSP :: (Monad m, Packet.SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
-runWeakSP f g = runWeakAP (Packet.sendApplicative f) g
-
--- It would make more sense directly interpreate the Packet.Remote.
+-- It would make more sense directly interpreate the A.Remote.
 --runWeakWP :: (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
 --runWeakWP f g = runWeakSP (Strong.toPacket f) g
 
@@ -65,7 +56,7 @@ runWeakSP f g = runWeakAP (Packet.sendApplicative f) g
 --runMonad f (Bind g k) = f g >>= runMonad f . k
 
 {-
-runMonad :: (Monad m) => (forall a . Packet.Remote c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))
+runMonad :: (Monad m) => (forall a . A.Remote c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))
 runMonad f (Appl g)   st0 = f g st0
 runMonad f (Bind g k) st0 = f g st0 >>= \ (a,st1) -> runMonad f (k a) st1
 -}
