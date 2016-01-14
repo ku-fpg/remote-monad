@@ -26,8 +26,8 @@ data Packet c p a where
 
 -- promote a Weak packet transport, into a Strong packet transport.
 -- Note this unbundles the Strong packet, but does provide the API.
-toPacket :: (Applicative m) => (Weak.Packet c p ~> m) -> (Packet c p ~> m)
-toPacket f (Command c pk) = f (Weak.Command c)   *> toPacket f pk
-toPacket f (Procedure p)  = f (Weak.Procedure p)
-toPacket f (Pure a)       = pure a
+sendPacket :: (Applicative m) => (Weak.Packet c p ~> m) -> (Packet c p ~> m)
+sendPacket f (Command c pk) = f (Weak.Command c)   *> sendPacket f pk
+sendPacket f (Procedure p)  = f (Weak.Procedure p)
+sendPacket f (Pure a)       = pure a
 

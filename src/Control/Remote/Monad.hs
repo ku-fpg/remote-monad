@@ -14,15 +14,15 @@ Portability: GHC
 
 module Control.Remote.Monad where
 
-import Control.Remote.Applicative as Packet
+import qualified Control.Remote.Applicative as Packet
 import Control.Remote.Monad.Packet.Weak as Weak
 import Control.Remote.Monad.Packet.Strong as Strong
 
 import Control.Natural
 
 data Remote c p a where
-   Appl        :: Packet.Packet c p a -> Remote c p a
-   Bind        :: Packet.Packet c p a -> (a -> Remote c p b) -> Remote c p b
+   Appl        :: Packet.Remote c p a -> Remote c p a
+   Bind        :: Packet.Remote c p a -> (a -> Remote c p b) -> Remote c p b
   
 instance Functor (Remote c p) where
   fmap f m = pure f <*> m
@@ -49,24 +49,24 @@ runWeak f (Appl g)   = Packet.toPacket (Strong.toPacket f) g
 runWeak f (Bind g k) = Packet.toPacket (Strong.toPacket f) g >>= runWeak f . k
 -}
 
-runWeakAP :: forall m c p a . (Monad m) => (Packet.Packet c p ~> m) -> (Remote c p ~> m)
+runWeakAP :: forall m c p a . (Monad m) => (Packet.Remote c p ~> m) -> (Remote c p ~> m)
 runWeakAP f (Appl g)   = f g
 runWeakAP f (Bind g k) = f g >>= runWeakAP f . k
 
-runWeakSP :: (Monad m, SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
-runWeakSP f g = runWeakAP (sendApplicative f) g
+runWeakSP :: (Monad m, Packet.SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
+runWeakSP f g = runWeakAP (Packet.sendApplicative f) g
 
--- It would make more sense directly interpreate the Packet.Packet.
+-- It would make more sense directly interpreate the Packet.Remote.
 --runWeakWP :: (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
 --runWeakWP f g = runWeakSP (Strong.toPacket f) g
 
 
---runMonad :: (Monad m) => (Packet.Packet c p ~> Local st m) -> (Remote c p ~> Local st m)
+--runMonad :: (Monad m) => (Packet.Remote c p ~> Local st m) -> (Remote c p ~> Local st m)
 --runMonad f (Appl g)   = f g
 --runMonad f (Bind g k) = f g >>= runMonad f . k
 
 {-
-runMonad :: (Monad m) => (forall a . Packet.Packet c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))
+runMonad :: (Monad m) => (forall a . Packet.Remote c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))
 runMonad f (Appl g)   st0 = f g st0
 runMonad f (Bind g k) st0 = f g st0 >>= \ (a,st1) -> runMonad f (k a) st1
 -}
