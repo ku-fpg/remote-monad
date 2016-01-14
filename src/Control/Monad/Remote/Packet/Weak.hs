@@ -17,10 +17,3 @@ data Packet c p a where
    Command   :: c -> Packet c p ()
    Procedure :: p a -> Packet c p a
 
-class WeakSend f where
-   command   :: c   -> f c p ()
-   procedure :: p a -> f c p a
-
-instance WeakSend Packet where
-  command = Command
-  procedure = Procedure

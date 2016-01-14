@@ -14,6 +14,8 @@ Portability: GHC
 
 module Control.Monad.Remote where
 
+import Control.Monad.Remote.Local
+
 import Control.Monad.Remote.Packet.Applicative as Packet
 import Control.Monad.Remote.Packet.Weak as Weak
 import Control.Monad.Remote.Packet.Strong as Strong
@@ -43,11 +45,35 @@ command = Appl . Packet.Command (pure ())
 procedure :: p a -> Remote c p a
 procedure = Appl . Packet.Procedure (pure id)
 
-runWeak :: forall m c p a f . (Weak.WeakSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+{-
+runWeak :: forall m c p a f . (Monad m) => (Weak.Packet c p ~> m) -> (Remote c p ~> m)
 runWeak f (Appl g)   = Packet.toPacket (Strong.toPacket f) g
 runWeak f (Bind g k) = Packet.toPacket (Strong.toPacket f) g >>= runWeak f . k
+-}
 
-runStrong :: forall m c p a f . (Strong.StrongSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+runWeakAP :: forall m c p a . (Monad m) => (Packet.Packet c p ~> m) -> (Remote c p ~> m)
+runWeakAP f (Appl g)   = f g
+runWeakAP f (Bind g k) = f g >>= runWeakAP f . k
+
+runWeakSP :: (Monad m, SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
+runWeakSP f g = runWeakAP (sendApplicative f) g
+
+-- It would make more sense directly interpreate the Packet.Packet.
+--runWeakWP :: (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
+--runWeakWP f g = runWeakSP (Strong.toPacket f) g
+
+
+runMonad :: (Monad m) => (Packet.Packet c p ~> Local st m) -> (Remote c p ~> Local st m)
+runMonad f (Appl g)   = f g
+runMonad f (Bind g k) = f g >>= runMonad f . k
+
+{-
+runMonad :: (Monad m) => (forall a . Packet.Packet c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))
+runMonad f (Appl g)   st0 = f g st0
+runMonad f (Bind g k) st0 = f g st0 >>= \ (a,st1) -> runMonad f (k a) st1
+-}
+
+runStrong :: forall m c p a f . (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
 runStrong = undefined
 
 --runStrongApplicative :: forall m c p a f . (Applicative.ApplicativeSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)

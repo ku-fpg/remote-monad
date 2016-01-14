@@ -39,26 +39,36 @@ instance Applicative (Packet c p) where
   m <*> (Command g2 c2)               = Command  (m           <*> g2) c2
   m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
 
-class Applicative f => ApplicativeSend f where
-  
+class SendApplicative f where
+  sendApplicative :: (Monad m) => (f c p ~> m) -> (Packet c p ~> m)
+
+
+instance SendApplicative Weak.Packet where
+  sendApplicative = runWeakApplicative
+
+runWeakApplicative :: forall m c p . (Applicative m) => (Weak.Packet c p ~> m) -> (Packet c p ~> m)
+runWeakApplicative f (Command   g c) = runWeakApplicative f g <* f (Weak.Command c)
+runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
+runWeakApplicative f (Pure        a) = pure a
+
+instance SendApplicative Strong.Packet where
+  sendApplicative = runStrongApplicative
+
+instance SendApplicative Packet where
+  sendApplicative = id
+
 
 -- promote a Strong packet transport, into an Applicative packet transport.
 -- Note this unbundles the Applicative packet, but does provide the Applicative API.
-toPacket :: forall m c p f . (Strong.StrongSend f, Monad m) => (f c p ~> m) -> (Packet c p ~> m)
-toPacket f p = go p $ \ cs -> f . cs . Strong.done
+runStrongApplicative :: forall m c p . (Monad m) => (Strong.Packet c p ~> m) -> (Packet c p ~> m)
+runStrongApplicative f p = go p $ \ cs a -> do
+    f $ cs $ Strong.Pure ()
+    return a
   where
-    go :: forall a r k b . Packet c p a -> ((forall b . f c p b -> f c p b) -> a -> m b) -> m b
+    go :: forall a r k b . Packet c p a -> ((forall b . Strong.Packet c p b -> Strong.Packet c p b) -> a -> m b) -> m b
     go (Pure a)        k = k id a
-    go (Command g c)   k = go g $ \ cs -> k (cs . Strong.command c)
+    go (Command g c)   k = go g $ \ cs -> k (cs . Strong.Command c)
     go (Procedure g p) k = go g $ \ cs r -> do
-        a <- f $ cs $ Strong.procedure p
+        a <- f $ cs $ Strong.Procedure p
         k id (r a)
 
-instance Weak.WeakSend Packet where
-  command   = Command (Pure ())
-  procedure = Procedure (Pure id) 
-
-instance Strong.StrongSend Packet where
-  command  c f = Command (Pure ()) c *> f
-  procedure = Procedure (Pure id)
-  done = Pure 
