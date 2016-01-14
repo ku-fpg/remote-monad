@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Monad.Remote.Packet.Strong
+Module:      Control.Remote.Monad.Packet.Strong
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -11,9 +11,9 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Monad.Remote.Packet.Strong where
+module Control.Remote.Monad.Packet.Strong where
 
-import qualified Control.Monad.Remote.Packet.Weak as Weak
+import qualified Control.Remote.Monad.Packet.Weak as Weak
 import Control.Natural
 
 

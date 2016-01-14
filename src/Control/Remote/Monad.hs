@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Monad.Remote.Packet.Weak
+Module:      Control.Remote.Monad.Packet.Weak
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -14,11 +14,9 @@ Portability: GHC
 
 module Control.Remote.Monad where
 
-import Control.Monad.Remote.Local
-
 import Control.Remote.Applicative as Packet
-import Control.Monad.Remote.Packet.Weak as Weak
-import Control.Monad.Remote.Packet.Strong as Strong
+import Control.Remote.Monad.Packet.Weak as Weak
+import Control.Remote.Monad.Packet.Strong as Strong
 
 import Control.Natural
 
@@ -63,9 +61,9 @@ runWeakSP f g = runWeakAP (sendApplicative f) g
 --runWeakWP f g = runWeakSP (Strong.toPacket f) g
 
 
-runMonad :: (Monad m) => (Packet.Packet c p ~> Local st m) -> (Remote c p ~> Local st m)
-runMonad f (Appl g)   = f g
-runMonad f (Bind g k) = f g >>= runMonad f . k
+--runMonad :: (Monad m) => (Packet.Packet c p ~> Local st m) -> (Remote c p ~> Local st m)
+--runMonad f (Appl g)   = f g
+--runMonad f (Bind g k) = f g >>= runMonad f . k
 
 {-
 runMonad :: (Monad m) => (forall a . Packet.Packet c p a -> st -> m (a,st)) -> (forall a. Remote c p a -> st -> m (a,st))

@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Monad.Remote.Packet.Applicative
+Module:      Control.Remote.Monad.Packet.Applicative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -14,8 +14,8 @@ Portability: GHC
 
 module Control.Remote.Applicative where
 
-import qualified Control.Monad.Remote.Packet.Strong as Strong
-import qualified Control.Monad.Remote.Packet.Weak as Weak
+import qualified Control.Remote.Monad.Packet.Strong as Strong
+import qualified Control.Remote.Monad.Packet.Weak as Weak
 import Control.Natural
 
 -- An Applicative Packet, that can encode both commands and procedures, bundled together.

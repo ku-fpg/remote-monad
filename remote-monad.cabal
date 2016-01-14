@@ -17,8 +17,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     
-                       Control.Monad.Remote.Packet.Weak
-                       Control.Monad.Remote.Packet.Strong
+                       Control.Remote.Monad.Packet.Weak
+                       Control.Remote.Monad.Packet.Strong
                        Control.Remote.Applicative
                        Control.Remote.Monad
   -- other-modules:       
