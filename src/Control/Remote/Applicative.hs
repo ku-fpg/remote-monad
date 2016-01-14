@@ -14,10 +14,11 @@ Portability: GHC
 
 module Control.Remote.Applicative where
 
+import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
 import qualified Control.Remote.Monad.Packet.Strong as Strong
-import           Control.Remote.Monad.Packet.Strong (Strong)
+import           Control.Remote.Monad.Packet.Strong (Strong, HStrong(..))
 import qualified Control.Remote.Monad.Packet.Weak as Weak
 import           Control.Remote.Monad.Packet.Weak (Weak)
 import Control.Natural
@@ -66,23 +67,30 @@ instance SendApplicative Strong where
 -- promote a Strong packet transport, into an Applicative packet transport.
 -- Note this unbundles the Applicative packet, but does provide the Applicative API.
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
-runStrongApplicative f p = go p $ \ cs a -> do
-    f $ cs $ Strong.Pure ()
-    return a
+runStrongApplicative f p = do
+    (r,HStrong h) <- runStateT (go p) (HStrong id)
+    f $ h $ Strong.Pure ()
+    return r
   where
-    go :: forall a r k b . Remote c p a -> ((forall b . Strong c p b -> Strong c p b) -> a -> m b) -> m b
-    go (Pure a)        k = k id a
-    go (Command g c)   k = go g $ \ cs -> k (cs . Strong.Command c)
-    go (Procedure g p) k = go g $ \ cs r -> do
-        a <- f $ cs $ Strong.Procedure p
-        k id (r a)
+    go :: forall a . Remote c p a -> StateT (HStrong c p) m a
+    go (Pure a)        = return a
+    go (Command g c)   = do
+        r <- go g
+        modify (\ (HStrong cs) -> HStrong (cs . Strong.Command c))
+        return r
+    go (Procedure g p) = do
+        r <- go g
+        HStrong cs <- get 
+        put (HStrong id)
+        lift $ f $ cs $ Strong.Procedure $ p
+        return undefined
 
 instance SendApplicative Remote where
   sendApplicative = id
 
 --newtype StrongState a = StrongState (HStrong c p -> (HStrong c p,a)) 
 
--- 'simulates the Remote, to see if it only contains commands', and if so,
+-- simulates the Remote, to see if it only contains commands, and if so,
 -- returns the static result. The commands still need executed.
 
 superCommand :: Remote c p a -> Maybe a
