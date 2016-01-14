@@ -71,7 +71,7 @@ runMonad f (Appl g)   st0 = f g st0
 runMonad f (Bind g k) st0 = f g st0 >>= \ (a,st1) -> runMonad f (k a) st1
 -}
 
-runStrong :: forall m c p a f . (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
+runStrong :: forall m c p a f . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
 runStrong = undefined
 
 --runStrongApplicative :: forall m c p a f . (Applicative.ApplicativeSend f, Monad m) => (f c p ~> m) -> (Remote c p ~> m)

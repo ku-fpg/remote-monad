@@ -15,7 +15,9 @@ Portability: GHC
 module Control.Remote.Applicative where
 
 import qualified Control.Remote.Monad.Packet.Strong as Strong
+import           Control.Remote.Monad.Packet.Strong (Strong)
 import qualified Control.Remote.Monad.Packet.Weak as Weak
+import           Control.Remote.Monad.Packet.Weak (Weak)
 import Control.Natural
 
 -- An Applicative Remote, that can encode both commands and procedures, bundled together.
@@ -42,30 +44,28 @@ instance Applicative (Remote c p) where
 class SendApplicative f where
   sendApplicative :: (Monad m) => (f c p ~> m) -> (Remote c p ~> m)
 
-
-instance SendApplicative Weak.Packet where
+instance SendApplicative Weak where
   sendApplicative = runWeakApplicative
 
-runWeakApplicative :: forall m c p . (Applicative m) => (Weak.Packet c p ~> m) -> (Remote c p ~> m)
+runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (Remote c p ~> m)
 runWeakApplicative f (Command   g c) = runWeakApplicative f g <* f (Weak.Command c)
 runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
 runWeakApplicative f (Pure        a) = pure a
 
-instance SendApplicative Strong.Packet where
+instance SendApplicative Strong where
   sendApplicative = runStrongApplicative
 
 instance SendApplicative Remote where
   sendApplicative = id
 
-
 -- promote a Strong packet transport, into an Applicative packet transport.
 -- Note this unbundles the Applicative packet, but does provide the Applicative API.
-runStrongApplicative :: forall m c p . (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
+runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
 runStrongApplicative f p = go p $ \ cs a -> do
     f $ cs $ Strong.Pure ()
     return a
   where
-    go :: forall a r k b . Remote c p a -> ((forall b . Strong.Packet c p b -> Strong.Packet c p b) -> a -> m b) -> m b
+    go :: forall a r k b . Remote c p a -> ((forall b . Strong c p b -> Strong c p b) -> a -> m b) -> m b
     go (Pure a)        k = k id a
     go (Command g c)   k = go g $ \ cs -> k (cs . Strong.Command c)
     go (Procedure g p) k = go g $ \ cs r -> do
