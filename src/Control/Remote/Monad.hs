@@ -12,7 +12,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Monad.Remote where
+module Control.Remote.Monad where
 
 import Control.Monad.Remote.Local
 
