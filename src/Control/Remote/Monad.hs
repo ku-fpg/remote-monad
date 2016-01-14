@@ -53,6 +53,8 @@ runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (Remote c p ~>
 runWeakMonad f (Appl g)   = A.sendApplicative f g
 runWeakMonad f (Bind g k) = A.sendApplicative f g >>= runWeakMonad f . k
 
+instance SendMonad Weak where
+  sendMonad = runWeakMonad
 
 instance SendMonad Strong where
   sendMonad = runStrongMonad

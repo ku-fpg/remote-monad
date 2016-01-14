@@ -23,7 +23,7 @@ import qualified Control.Remote.Monad.Packet.Weak as Weak
 import           Control.Remote.Monad.Packet.Weak (Weak)
 import Control.Natural
 
--- An Applicative Remote, that can encode both commands and procedures, bundled together.
+-- | An Applicative Remote, that can encode both commands and procedures, bundled together.
 -- terminated by an optional 'Procedure'.
 
 data Remote c p a where
@@ -64,8 +64,7 @@ runWeakApplicative f (Pure        a) = pure a
 instance SendApplicative Strong where
   sendApplicative = runStrongApplicative
 
--- promote a Strong packet transport, into an Applicative packet transport.
--- Note this unbundles the Applicative packet, but does provide the Applicative API.
+-- | promote a Strong packet transport, into an Applicative packet transport.
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
 runStrongApplicative f p = do
     (r,HStrong h) <- runStateT (go p) (HStrong id)
@@ -88,9 +87,7 @@ runStrongApplicative f p = do
 instance SendApplicative Remote where
   sendApplicative = id
 
---newtype StrongState a = StrongState (HStrong c p -> (HStrong c p,a)) 
-
--- simulates the Remote, to see if it only contains commands, and if so,
+-- | This simulates a 'Remote', to see if it only contains commands, and if so,
 -- returns the static result. The commands still need executed.
 
 superCommand :: Remote c p a -> Maybe a

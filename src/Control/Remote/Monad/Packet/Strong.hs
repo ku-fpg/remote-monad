@@ -18,20 +18,19 @@ import           Control.Remote.Monad.Packet.Weak (Weak)
 import           Control.Natural
 
 
--- A Strong Strong, that can encode a list of commands, terminated by an optional procedure.
+-- | A Strong Packet, that can encode a list of commands, terminated by an optional procedure.
 
 data Strong c p a where
    Command   :: c -> Strong c p b -> Strong c p b
    Procedure :: p a               -> Strong c p a
    Pure      :: a                 -> Strong c p a
 
--- promote a Weak packet transporter, into a Strong packet transporter.
--- Note this unbundles the Strong packet, but does provide the API.
-sendStrong :: (Applicative m) => (Weak c p ~> m) -> (Strong c p ~> m)
-sendStrong f (Command c pk) = f (Weak.Command c)   *> sendStrong f pk
-sendStrong f (Procedure p)  = f (Weak.Procedure p)
-sendStrong f (Pure a)       = pure a
+-- | promote a Weak packet transporter, into a Strong packet transporter.
+runStrong :: (Applicative m) => (Weak c p ~> m) -> (Strong c p ~> m)
+runStrong f (Command c pk) = f (Weak.Command c)   *> runStrong f pk
+runStrong f (Procedure p)  = f (Weak.Procedure p)
+runStrong f (Pure a)       = pure a
 
--- A Hughes-style version of 'Strong', with efficent append.
+-- | A Hughes-style version of 'Strong', with efficent append.
 newtype HStrong c p = HStrong (Strong c p ~> Strong c p)
 

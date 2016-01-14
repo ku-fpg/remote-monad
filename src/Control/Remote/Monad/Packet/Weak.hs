@@ -11,7 +11,7 @@ Portability: GHC
 
 module Control.Remote.Monad.Packet.Weak where
 
--- A Weak Packet, that can encode a command, or a procedure.
+-- | A Weak Packet, that can encode a command or a procedure.
 
 data Weak c p a where
    Command   :: c   -> Weak c p ()
