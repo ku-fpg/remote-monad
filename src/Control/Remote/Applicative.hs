@@ -12,7 +12,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Monad.Remote.Packet.Applicative where
+module Control.Remote.Applicative where
 
 import qualified Control.Monad.Remote.Packet.Strong as Strong
 import qualified Control.Monad.Remote.Packet.Weak as Weak

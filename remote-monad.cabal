@@ -18,9 +18,9 @@ cabal-version:       >=1.10
 library
   exposed-modules:     
                        Control.Monad.Remote
-                       Control.Monad.Remote.Packet.Applicative
                        Control.Monad.Remote.Packet.Weak
                        Control.Monad.Remote.Packet.Strong
+                       Control.Remote.Applicative
   -- other-modules:       
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
   build-depends:       base >=4.8 && <4.9

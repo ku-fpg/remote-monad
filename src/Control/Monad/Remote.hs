@@ -16,7 +16,7 @@ module Control.Monad.Remote where
 
 import Control.Monad.Remote.Local
 
-import Control.Monad.Remote.Packet.Applicative as Packet
+import Control.Remote.Applicative as Packet
 import Control.Monad.Remote.Packet.Weak as Weak
 import Control.Monad.Remote.Packet.Strong as Strong
 
