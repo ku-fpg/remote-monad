@@ -46,10 +46,16 @@ command = Appl . A.command
 procedure :: p a -> Remote c p a
 procedure = Appl . A.procedure 
 
+class SendMonad f where
+  sendMonad :: (Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+
 runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
 runWeakMonad f (Appl g)   = A.sendApplicative f g
 runWeakMonad f (Bind g k) = A.sendApplicative f g >>= runWeakMonad f . k
 
+
+instance SendMonad Strong where
+  sendMonad = runStrongMonad
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.
@@ -76,6 +82,9 @@ runStrongMonad f p = do
         lift $ f $ cs $ Strong.Procedure $ p
         return undefined
 
+instance SendMonad A.Remote where
+  sendMonad = runApplicativeMonad
+
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.
 runApplicativeMonad :: forall m c p . (Monad m) => (A.Remote c p ~> m) -> (Remote c p ~> m)
@@ -97,3 +106,4 @@ runApplicativeMonad f p = do
                 Just a -> do
                   modify (\ ap' -> ap' <* ap)
                   return a
+
