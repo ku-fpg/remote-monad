@@ -41,6 +41,12 @@ instance Applicative (Remote c p) where
   m <*> (Command g2 c2)               = Command  (m           <*> g2) c2
   m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
 
+command :: c -> Remote c p ()
+command = Command (pure ())
+
+procedure :: p a -> Remote c p a
+procedure = Procedure (pure id)
+
 class SendApplicative f where
   sendApplicative :: (Monad m) => (f c p ~> m) -> (Remote c p ~> m)
 
@@ -48,7 +54,7 @@ instance SendApplicative Weak where
   sendApplicative = runWeakApplicative
 
 runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (Remote c p ~> m)
-runWeakApplicative f (Command   g c) = runWeakApplicative f g <* f (Weak.Command c)
+runWeakApplicative f (Command   g c) = runWeakApplicative f g <*  f (Weak.Command c)
 runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
 runWeakApplicative f (Pure        a) = pure a
 

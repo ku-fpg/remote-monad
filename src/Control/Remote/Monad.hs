@@ -60,7 +60,6 @@ runWeakSP f g = runWeakAP (Packet.sendApplicative f) g
 --runWeakWP :: (Monad m) => (Strong.Packet c p ~> m) -> (Remote c p ~> m)
 --runWeakWP f g = runWeakSP (Strong.toPacket f) g
 
-
 --runMonad :: (Monad m) => (Packet.Remote c p ~> Local st m) -> (Remote c p ~> Local st m)
 --runMonad f (Appl g)   = f g
 --runMonad f (Bind g k) = f g >>= runMonad f . k

@@ -25,7 +25,7 @@ data Strong c p a where
    Procedure :: p a               -> Strong c p a
    Pure      :: a                 -> Strong c p a
 
--- promote a Weak packet transport, into a Strong packet transport.
+-- promote a Weak packet transporter, into a Strong packet transporter.
 -- Note this unbundles the Strong packet, but does provide the API.
 sendStrong :: (Applicative m) => (Weak c p ~> m) -> (Strong c p ~> m)
 sendStrong f (Command c pk) = f (Weak.Command c)   *> sendStrong f pk

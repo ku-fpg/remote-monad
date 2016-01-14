@@ -14,6 +14,6 @@ module Control.Remote.Monad.Packet.Weak where
 -- A Weak Packet, that can encode a command, or a procedure.
 
 data Weak c p a where
-   Command   :: c -> Weak c p ()
+   Command   :: c   -> Weak c p ()
    Procedure :: p a -> Weak c p a
 
