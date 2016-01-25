@@ -12,7 +12,7 @@ maintainer:          andygill@ku.edu
 -- copyright:           
 category:            Control
 build-type:          Simple
--- extra-source-files:  
+tested-with:         GHC == 7.10.3
 cabal-version:       >=1.10
 
 source-repository head
