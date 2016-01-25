@@ -3,8 +3,8 @@
 
 name:                remote-monad
 version:             0.1.0.0
--- synopsis:            
--- description:         
+synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
+description:         An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
 license:             BSD3
 license-file:        LICENSE
 author:              Andy Gill
