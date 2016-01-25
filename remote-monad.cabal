@@ -15,6 +15,10 @@ build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
+source-repository head
+  type:                git
+  location:            git://github.com/ku-fpg/remote-monad
+
 library
   exposed-modules:     
                        Control.Remote.Monad.Packet.Weak
@@ -23,8 +27,22 @@ library
                        Control.Remote.Monad
   -- other-modules:       
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
-  build-depends:       base >=4.8 && <4.9
+  build-depends:       base >=4.7 && < 5
                      , natural-transformation >= 0.3 && < 0.4
                      , transformers >= 0.4 && < 0.6
   hs-source-dirs:      src
   default-language:    Haskell2010
+
+
+test-suite natural-transformation-properties
+  type:                exitcode-stdio-1.0
+  main-is:             Test.hs
+  build-depends:       base                   >= 4.7 && < 5
+                     , containers             >= 0.1 && < 0.6
+                     , remote-monad           == 0.1.0.0
+                     , quickcheck-instances   >= 0.1 && < 0.4
+                     , tasty                  >= 0.8 && < 0.12
+                     , tasty-quickcheck       >= 0.8 && < 0.9
+  hs-source-dirs:      tests
+  default-language:    Haskell2010
+  ghc-options:         -Wall
