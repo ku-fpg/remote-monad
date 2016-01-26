@@ -222,10 +222,10 @@ arbitraryBind f n = oneof
        k  <- promote (`coarbitrary` f (n `div` 2))  -- look for a better way of doing this
        return $ RemoteBind m k
   , do m <- arbitraryRemoteMonadMaybeA (n `div` 2)
-       k  <- promote (`coarbitrary` f (n `div` 2))  -- look for a better way of doing this
+       k  <- promote (`coarbitrary` f (n `div` 2)) 
        return $ RemoteBind m k
   , do m <- arbitraryRemoteMonadA (n `div` 2)
-       k  <- promote (`coarbitrary` f (n `div` 2))  -- look for a better way of doing this
+       k  <- promote (`coarbitrary` f (n `div` 2)) 
        return $ RemoteBind m k
   ]
 
@@ -235,16 +235,16 @@ arbitraryBind f n = oneof
 prop_push :: RemoteMonad -> [A] -> A -> Property
 prop_push runMe xs x = monadicIO $ do
     dev <- run $ newDevice xs runMe
-    () <- run $ sendM dev (M.command (Push x))
-    ys <- run $ readDevice  dev
+    ()  <- run $ sendM dev (M.command (Push x))
+    ys  <- run $ readDevice  dev
     assert (ys == (x : xs))
 
 -- Test the remote pop primitive
 prop_pop :: RemoteMonad -> [A] -> Property
 prop_pop runMe xs = monadicIO $ do
     dev <- run $ newDevice xs runMe
-    r <- run $ sendM dev (M.procedure Pop)
-    ys <- run $ readDevice  dev
+    r   <- run $ sendM dev (M.procedure Pop)
+    ys  <- run $ readDevice  dev
     case xs of
       [] -> assert (r == Nothing && ys == [])
       (x':xs') -> assert (r == Just x' && ys == xs')
@@ -253,12 +253,12 @@ prop_pop runMe xs = monadicIO $ do
 testRunRemoteMonad :: RemoteMonad -> RemoteMonad -> Remote A -> [A] -> Property
 testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
     dev1 <- run $ newDevice xs runMe1
-    r1 <- run $ sendM dev1 m
-    tr1 <- run $ traceDevice dev1
+    r1   <- run $ sendM dev1 m
+    tr1  <- run $ traceDevice dev1
 
     dev2 <- run $ newDevice xs runMe2
-    r2 <- run $ sendM dev2 m
-    tr2 <- run $ traceDevice dev2
+    r2   <- run $ sendM dev2 m
+    tr2  <- run $ traceDevice dev2
 
 --    monitor $ collect $ (tr1,tr2)
     assert (r1 == r2 && tr1 == tr2)
@@ -274,8 +274,8 @@ testRemoteMonadBindLaw runMe xs = monadicIO $ do
     tr1  <- run $ traceDevice dev1
 
     dev2 <- run $ newDevice xs runMe
-    r2 <- run $ sendM dev2 (m >>= k)
-    tr2 <- run $ traceDevice dev2
+    r2   <- run $ sendM dev2 (m >>= k)
+    tr2  <- run $ traceDevice dev2
 
 --    monitor $ collect $ (runMe, tr1)
     assert (r1 == r2 && tr1 == tr2)
@@ -285,7 +285,7 @@ testRemoteMonadReturnLaw :: RemoteMonad -> [A] -> A -> Property
 testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
 
     dev1 <- run $ newDevice xs runMe
-    x'    <- run $ sendM dev1 (return x)
+    x'   <- run $ sendM dev1 (return x)
     tr1  <- run $ traceDevice dev1
 
 --    monitor $ collect $ (runMe, tr1)
