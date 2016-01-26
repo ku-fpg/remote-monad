@@ -311,5 +311,5 @@ testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
     st1  <- run $ readDevice dev1
 
 --    monitor $ collect $ (runMe, tr1)
-    assert (x == x' && tr1 == [])
+    assert (x == x' && tr1 == [] && st1 == xs)
 
