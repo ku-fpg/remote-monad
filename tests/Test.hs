@@ -24,6 +24,7 @@ import Data.Sequence (Seq, fromList)
 import qualified Control.Remote.Monad as M
 import qualified Control.Remote.Monad.Packet.Weak as WP
 import qualified Control.Remote.Monad.Packet.Strong as SP
+import qualified Control.Remote.Applicative as Ap
 
 
 import Test.QuickCheck 
@@ -62,23 +63,27 @@ data P :: * -> * where
 
 runWP :: IORef [String] -> IORef [A] -> WP.Weak C P a -> IO a
 runWP tr ref (WP.Command (CommandPush a)) = do
-    putStrLn "\n"
     stack <- readIORef ref
     writeIORef ref (a : stack)
     modifyIORef tr (("push " ++ show a) :)
     return ()
 runWP tr ref (WP.Procedure (ProcedurePop)) = do
     modifyIORef tr (("pop") :)
-    putStrLn "\n"
     stack <- readIORef ref
     case stack of
       [] -> return Nothing
       (x:xs) -> do
           writeIORef ref xs
           modifyIORef tr ((show x) :)
-          putStrLn "\n"
           return (Just x)
 
+
+-- TODO: replace with actual packet evaluators (that can call runWP).
+runSP :: IORef [String] -> IORef [A] -> SP.Strong C P a -> IO a
+runSP tr ref = SP.runStrong (runWP tr ref)
+
+runAppP :: IORef [String] -> IORef [A] -> Ap.Remote C P a -> IO a
+runAppP tr ref = Ap.sendApplicative (runWP tr ref)
 
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
@@ -92,13 +97,47 @@ instance Arbitrary RemoteMonad where
   arbitrary = elements 
     [ runWeakMonadWeakPacket
     , runWeakMonadStrongPacket
+    , runWeakMonadApplicativePacket
+    , runStrongMonadWeakPacket
+    , runStrongMonadStrongPacket
+    , runApplicativeMonadWeakPacket
+    , runApplicativeMonadStrongPacket
+    , runApplicativeMonadApplicativePacket
     ]
+
+--- This is a complete enumeration of ways of building remote monads
   
 runWeakMonadWeakPacket :: RemoteMonad
-runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" $ \ tr ref -> M.runWeakMonad (runWP tr ref)
+runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" 
+  $ \ tr ref -> M.runWeakMonad (runWP tr ref)
 
 runWeakMonadStrongPacket :: RemoteMonad
-runWeakMonadStrongPacket = RemoteMonad "WeakMonadStrongPacket" $ \ tr ref -> M.runWeakMonad (SP.runStrong (runWP tr ref))
+runWeakMonadStrongPacket = RemoteMonad "WeakMonadStrongPacket" 
+  $ \ tr ref -> M.runWeakMonad (runSP tr ref)
+
+runWeakMonadApplicativePacket :: RemoteMonad
+runWeakMonadApplicativePacket = RemoteMonad "WeakMonadApplicativePacket" 
+  $ \ tr ref -> M.runWeakMonad (runAppP tr ref)
+
+runStrongMonadWeakPacket :: RemoteMonad
+runStrongMonadWeakPacket = RemoteMonad "StrongMonadWeakPacket" 
+  $ \ tr ref -> M.runStrongMonad (SP.runStrong (runWP tr ref))
+
+runStrongMonadStrongPacket :: RemoteMonad
+runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket" 
+  $ \ tr ref -> M.runStrongMonad (runSP tr ref)
+
+runApplicativeMonadWeakPacket :: RemoteMonad
+runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket" 
+  $ \ tr ref -> M.runApplicativeMonad (Ap.sendApplicative (runWP tr ref))
+
+runApplicativeMonadStrongPacket :: RemoteMonad
+runApplicativeMonadStrongPacket = RemoteMonad "ApplicativeMonadStrongPacket" 
+  $ \ tr ref -> M.runApplicativeMonad (Ap.sendApplicative (runSP tr ref))
+
+runApplicativeMonadApplicativePacket :: RemoteMonad
+runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
+  $ \ tr ref -> M.runApplicativeMonad (runAppP tr ref)
 
 
 ----------------------------------------------------------------
@@ -200,7 +239,7 @@ testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
     r2 <- run $ sendM dev2 m
     tr2 <- run $ traceDevice dev2
 
-    monitor $ collect $ (runMe1, runMe2, tr1)
+--    monitor $ collect $ (runMe1, runMe2, tr1)
     return (r1 == r2 && tr1 == tr2)
     
 -- Test the remote push primitive
