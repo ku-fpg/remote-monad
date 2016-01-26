@@ -298,7 +298,7 @@ testRemoteMonadBindLaw runMe xs = monadicIO $ do
     tr2  <- run $ traceDevice dev2
     st2  <- run $ readDevice dev2
 
-    monitor $ collect $ (runMe, tr1)
+--    monitor $ collect $ (runMe, tr1)
     assert (r1 == r2 && tr1 == tr2 && st1 == st2)
 
 -- Check remote monad laws
