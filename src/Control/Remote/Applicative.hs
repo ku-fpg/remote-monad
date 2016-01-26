@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
@@ -26,10 +27,10 @@ import Control.Natural
 -- | An Applicative Remote, that can encode both commands and procedures, bundled together.
 -- terminated by an optional 'Procedure'.
 
-data Remote c p a where
-   Command   :: Remote c p b -> c -> Remote c p b
+data Remote (c :: *) (p :: * -> *) (a :: *) where
+   Command   :: Remote c p b        -> c   -> Remote c p b
    Procedure :: Remote c p (a -> b) -> p a -> Remote c p b
-   Pure      :: a -> Remote c p a 
+   Pure      :: a                          -> Remote c p a 
 
 instance Functor (Remote c p) where
   fmap f (Command g c)   = Command (fmap f g) c
@@ -45,10 +46,10 @@ instance Applicative (Remote c p) where
   m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
 
 command :: c -> Remote c p ()
-command = Command (pure ())
+command c = Command (pure ()) c
 
 procedure :: p a -> Remote c p a
-procedure = Procedure (pure id)
+procedure p = Procedure (pure id) p
 
 class SendApplicative f where
   sendApplicative :: (Monad m) => (f c p ~> m) -> (Remote c p ~> m)

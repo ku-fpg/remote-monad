@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -20,10 +21,10 @@ import           Control.Natural
 
 -- | A Strong Packet, that can encode a list of commands, terminated by an optional procedure.
 
-data Strong c p a where
+data Strong (c :: *) (p :: * -> *) (a :: *) where
    Command   :: c -> Strong c p b -> Strong c p b
    Procedure :: p a               -> Strong c p a
-   Pure      :: a                 -> Strong c p a
+   Pure      :: a                 -> Strong c p a   -- NOTE: should this be Pure :: Strong c p () ?
 
 -- | promote a Weak packet transporter, into a Strong packet transporter.
 runStrong :: (Applicative m) => (Weak c p ~> m) -> (Strong c p ~> m)
