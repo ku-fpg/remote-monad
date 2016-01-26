@@ -38,6 +38,7 @@ instance Applicative (Remote c p) where
 
 instance Monad (Remote c p) where
   return = pure
+  Appl m >>= k    = Bind m k
   Bind m k >>= k2 = Bind m (\ a -> k a >>= k2)
 
 command :: c -> Remote c p ()
