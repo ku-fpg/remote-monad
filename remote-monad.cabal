@@ -40,6 +40,7 @@ test-suite natural-transformation-properties
   build-depends:       base                   >= 4.7 && < 5
                      , containers             >= 0.1 && < 0.6
                      , remote-monad           == 0.1.0.0
+                     , QuickCheck             == 2.8.*
                      , quickcheck-instances   >= 0.1 && < 0.4
                      , tasty                  >= 0.8 && < 0.12
                      , tasty-quickcheck       >= 0.8 && < 0.9
