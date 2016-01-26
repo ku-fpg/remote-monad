@@ -272,13 +272,15 @@ testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
     dev1 <- run $ newDevice xs runMe1
     r1   <- run $ sendM dev1 m
     tr1  <- run $ traceDevice dev1
+    st1  <- run $ readDevice dev1
 
     dev2 <- run $ newDevice xs runMe2
     r2   <- run $ sendM dev2 m
     tr2  <- run $ traceDevice dev2
-
+    st2  <- run $ readDevice dev2
+    
 --    monitor $ collect $ (tr1,tr2)
-    assert (r1 == r2 && tr1 == tr2)
+    assert (r1 == r2 && tr1 == tr2 && st1 == st2)
     
 -- Check remote monad laws
 testRemoteMonadBindLaw :: RemoteMonad -> [A] -> Property
@@ -289,13 +291,15 @@ testRemoteMonadBindLaw runMe xs = monadicIO $ do
     a    <- run $ sendM dev1 m
     r1   <- run $ sendM dev1 (k a)
     tr1  <- run $ traceDevice dev1
+    st1  <- run $ readDevice dev1
 
     dev2 <- run $ newDevice xs runMe
     r2   <- run $ sendM dev2 (m >>= k)
     tr2  <- run $ traceDevice dev2
+    st2  <- run $ readDevice dev2
 
---    monitor $ collect $ (runMe, tr1)
-    assert (r1 == r2 && tr1 == tr2)
+    monitor $ collect $ (runMe, tr1)
+    assert (r1 == r2 && tr1 == tr2 && st1 == st2)
 
 -- Check remote monad laws
 testRemoteMonadReturnLaw :: RemoteMonad -> [A] -> A -> Property
@@ -304,6 +308,7 @@ testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
     dev1 <- run $ newDevice xs runMe
     x'   <- run $ sendM dev1 (return x)
     tr1  <- run $ traceDevice dev1
+    st1  <- run $ readDevice dev1
 
 --    monitor $ collect $ (runMe, tr1)
     assert (x == x' && tr1 == [])
