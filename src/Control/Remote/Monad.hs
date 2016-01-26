@@ -40,6 +40,8 @@ instance Monad (Remote c p) where
   return = pure
   Appl m >>= k    = Bind m k
   Bind m k >>= k2 = Bind m (\ a -> k a >>= k2)
+  
+  m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
 command :: c -> Remote c p ()
 command = Appl . A.command
