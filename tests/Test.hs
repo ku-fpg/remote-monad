@@ -41,33 +41,33 @@ main :: IO ()
 main = defaultMain testProperties
 
 testProperties :: TestTree
-testProperties = testGroup "QuickCheck properties"
-    [ 
+testProperties = testGroup "QuickCheck remote monad properties"
+    [ testProperty "push works remotely"                  $ prop_push
+    , testProperty "pop works remotely"                   $ prop_pop 
+    , testProperty "compare two remote monad strategies"  $ testRunRemoteMonad
+    , testProperty "send (m >>= k) = send m >>= send . k" $ testRemoteMonadBindLaw
+    , testProperty "send (return a) = return a"           $ testRemoteMonadReturnLaw
     ]
-   
+
 
 ----------------------------------------------------------------
 -- Basic stack machine, with its interpreter
 
-data Stack :: * -> * where
-  Push :: A -> Stack ()
-  Pop :: Stack (Maybe A)
-
 data C :: * where
-  CommandPush :: A -> C
+  Push :: A -> C
 
 data P :: * -> * where
-  ProcedurePop :: P (Maybe A)
+  Pop :: P (Maybe A)
 
 -- Basic evaluator
 
 runWP :: IORef [String] -> IORef [A] -> WP.Weak C P a -> IO a
-runWP tr ref (WP.Command (CommandPush a)) = do
+runWP tr ref (WP.Command (Push a)) = do
     stack <- readIORef ref
     writeIORef ref (a : stack)
     modifyIORef tr (("push " ++ show a) :)
     return ()
-runWP tr ref (WP.Procedure (ProcedurePop)) = do
+runWP tr ref (WP.Procedure (Pop)) = do
     modifyIORef tr (("pop") :)
     stack <- readIORef ref
     case stack of
@@ -180,6 +180,9 @@ instance Arbitrary (Remote A) where
 data RemoteBind :: * -> * where
   RemoteBind :: M.Remote C P a -> (a -> M.Remote C P b) -> RemoteBind b
 
+instance Show (RemoteBind a) where
+  show _ = "<REMOTEBIND>"
+
 ----------------------------------------------------------------
 
 arbitraryRemoteMonad' :: [Gen (M.Remote C P a)] -> Int -> Gen (M.Remote C P a)
@@ -194,13 +197,13 @@ arbitraryRemoteMonad' base n = frequency
 arbitraryRemoteMonadUnit :: Int -> Gen (M.Remote C P ())
 arbitraryRemoteMonadUnit = arbitraryRemoteMonad'
   [ return (return ())
-  , M.command . CommandPush <$> arbitrary
+  , M.command . Push <$> arbitrary
   ]
 
 arbitraryRemoteMonadMaybeA :: Int -> Gen (M.Remote C P (Maybe A))
 arbitraryRemoteMonadMaybeA = arbitraryRemoteMonad'
   [ return <$> arbitrary
-  , return $ M.procedure ProcedurePop
+  , return $ M.procedure Pop
   ]
 
 arbitraryRemoteMonadA :: Int -> Gen (M.Remote C P A)
@@ -228,10 +231,28 @@ arbitraryBind f n = oneof
 
 --------------------------------------------------------------------------
 
+-- Test the remote push primitive
+prop_push :: RemoteMonad -> [A] -> A -> Property
+prop_push runMe xs x = monadicIO $ do
+    dev <- run $ newDevice xs runMe
+    () <- run $ sendM dev (M.command (Push x))
+    ys <- run $ readDevice  dev
+    assert (ys == (x : xs))
+
+-- Test the remote pop primitive
+prop_pop :: RemoteMonad -> [A] -> Property
+prop_pop runMe xs = monadicIO $ do
+    dev <- run $ newDevice xs runMe
+    r <- run $ sendM dev (M.procedure Pop)
+    ys <- run $ readDevice  dev
+    case xs of
+      [] -> assert (r == Nothing && ys == [])
+      (x':xs') -> assert (r == Just x' && ys == xs')
+
 -- Check that two remote monad configurations given the same trace and same result
 testRunRemoteMonad :: RemoteMonad -> RemoteMonad -> Remote A -> [A] -> Property
 testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
-    dev1 <- run $ newDevice xs runMe2
+    dev1 <- run $ newDevice xs runMe1
     r1 <- run $ sendM dev1 m
     tr1 <- run $ traceDevice dev1
 
@@ -242,25 +263,31 @@ testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
 --    monitor $ collect $ (runMe1, runMe2, tr1)
     return (r1 == r2 && tr1 == tr2)
     
--- Test the remote push primitive
-prop_push :: RemoteMonad -> [A] -> A -> Property
-prop_push runMe xs x = monadicIO $ do
-    dev <- run $ newDevice xs runMe
-    () <- run $ sendM dev (M.command (CommandPush x))
-    ys <- run $ readDevice  dev
-    assert (ys == (x : xs))
+-- Check remote monad laws
+testRemoteMonadBindLaw :: RemoteMonad -> [A] -> Property
+testRemoteMonadBindLaw runMe xs = monadicIO $ do
+    RemoteBind m k <- pick (sized $ arbitraryBind arbitraryRemoteMonadA)
 
--- Test the remote pop primitive
-prop_pop :: RemoteMonad -> [A] -> Property
-prop_pop runMe xs = monadicIO $ do
-    dev <- run $ newDevice xs runMe
-    r <- run $ sendM dev (M.procedure ProcedurePop)
-    ys <- run $ readDevice  dev
-    case xs of
-      [] -> assert (r == Nothing && ys == [])
-      (x':xs') -> assert (r == Just x' && ys == xs')
+    dev1 <- run $ newDevice xs runMe
+    a    <- run $ sendM dev1 m
+    r1   <- run $ sendM dev1 (k a)
+    tr1  <- run $ traceDevice dev1
 
+    dev2 <- run $ newDevice xs runMe
+    r2 <- run $ sendM dev2 (m >>= k)
+    tr2 <- run $ traceDevice dev2
 
---runWeakMonadWeakPacket :: Device -> R.Remote C P a -> IO a
+--    monitor $ collect $ (runMe, tr1)
+    return (r1 == r2 && tr1 == tr2)
 
---WeakMonadWeakPacket :: R.Remote C P a -> IO a
+-- Check remote monad laws
+testRemoteMonadReturnLaw :: RemoteMonad -> [A] -> A -> Property
+testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
+
+    dev1 <- run $ newDevice xs runMe
+    x'    <- run $ sendM dev1 (return x)
+    tr1  <- run $ traceDevice dev1
+
+--    monitor $ collect $ (runMe, tr1)
+    return (x == x' && tr1 == [])
+
