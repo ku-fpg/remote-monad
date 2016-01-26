@@ -43,9 +43,11 @@ instance Monad (Remote c p) where
   
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
+-- | promote a command into the remote monad
 command :: c -> Remote c p ()
 command = Appl . A.command
 
+-- | promote a procedure into the remote monad
 procedure :: p a -> Remote c p a
 procedure = Appl . A.procedure 
 

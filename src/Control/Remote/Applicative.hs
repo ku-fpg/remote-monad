@@ -45,9 +45,11 @@ instance Applicative (Remote c p) where
   m <*> (Command g2 c2)               = Command  (m           <*> g2) c2
   m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
 
+-- | promote a command into the applicative
 command :: c -> Remote c p ()
 command c = Command (pure ()) c
 
+-- | promote a command into the applicative
 procedure :: p a -> Remote c p a
 procedure p = Procedure (pure id) p
 
