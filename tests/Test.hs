@@ -183,19 +183,28 @@ instance Arbitrary (Remote A) where
 ----------------------------------------------------------------
 
 data RemoteBind :: * -> * where
-  RemoteBind :: M.Remote C P a -> (a -> M.Remote C P b) -> RemoteBind b
+  RemoteBind :: Arbitrary a => M.Remote C P a -> (a -> M.Remote C P b) -> RemoteBind b
 
 instance Show (RemoteBind a) where
   show _ = "<REMOTEBIND>"
 
 ----------------------------------------------------------------
 
-arbitraryRemoteMonad' :: [Gen (M.Remote C P a)] -> Int -> Gen (M.Remote C P a)
+arbitraryRemoteMonad' :: (CoArbitrary a, Arbitrary a) => [Gen (M.Remote C P a)] -> Int -> Gen (M.Remote C P a)
 arbitraryRemoteMonad' base 0 = oneof base 
 arbitraryRemoteMonad' base n = frequency 
   [ (1 , oneof base)
   , (1 , do RemoteBind m k <- arbitraryBind (arbitraryRemoteMonad' base) n
             return (m >>= k)
+    )
+  , (1 , do m1 <- arbitraryRemoteMonadA (n `div` 2)
+            m2 <- arbitraryRemoteMonad' base (n `div` 2)
+            return (m1 >> m2)
+    )
+  , (1 , do m1 <- arbitraryRemoteMonadA (n `div` 2)
+            m2 <- arbitraryRemoteMonad' base (n `div` 2)
+            f  <- arbitrary
+            return (fmap f m1 <*> m2)
     )
   ]
 
@@ -214,12 +223,7 @@ arbitraryRemoteMonadMaybeA = arbitraryRemoteMonad'
 arbitraryRemoteMonadA :: Int -> Gen (M.Remote C P A)
 arbitraryRemoteMonadA = arbitraryRemoteMonad'
   [ return <$> arbitrary
-  , do f :: () -> A <- arbitrary
-       fmap f <$> arbitraryRemoteMonadUnit 0
-  , do f :: Maybe A -> A <- arbitrary
-       fmap f <$> arbitraryRemoteMonadMaybeA 0
   ]
-
 
 arbitraryBind :: (Int -> Gen (M.Remote C P a)) -> Int -> Gen (RemoteBind a)
 arbitraryBind f n = oneof
