@@ -260,8 +260,8 @@ testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
     r2 <- run $ sendM dev2 m
     tr2 <- run $ traceDevice dev2
 
---    monitor $ collect $ (runMe1, runMe2, tr1)
-    return (r1 == r2 && tr1 == tr2)
+--    monitor $ collect $ (tr1,tr2)
+    assert (r1 == r2 && tr1 == tr2)
     
 -- Check remote monad laws
 testRemoteMonadBindLaw :: RemoteMonad -> [A] -> Property
@@ -278,7 +278,7 @@ testRemoteMonadBindLaw runMe xs = monadicIO $ do
     tr2 <- run $ traceDevice dev2
 
 --    monitor $ collect $ (runMe, tr1)
-    return (r1 == r2 && tr1 == tr2)
+    assert (r1 == r2 && tr1 == tr2)
 
 -- Check remote monad laws
 testRemoteMonadReturnLaw :: RemoteMonad -> [A] -> A -> Property
@@ -289,5 +289,5 @@ testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
     tr1  <- run $ traceDevice dev1
 
 --    monitor $ collect $ (runMe, tr1)
-    return (x == x' && tr1 == [])
+    assert (x == x' && tr1 == [])
 
