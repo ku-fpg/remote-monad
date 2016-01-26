@@ -23,6 +23,8 @@ import Data.Sequence (Seq, fromList)
 
 import qualified Control.Remote.Monad as M
 import qualified Control.Remote.Monad.Packet.Weak as WP
+import qualified Control.Remote.Monad.Packet.Strong as SP
+
 
 import Test.QuickCheck 
 import Test.QuickCheck.Instances ()
@@ -89,10 +91,15 @@ instance Show RemoteMonad where
 instance Arbitrary RemoteMonad where
   arbitrary = elements 
     [ runWeakMonadWeakPacket
+    , runWeakMonadStrongPacket
     ]
   
 runWeakMonadWeakPacket :: RemoteMonad
 runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" $ \ tr ref -> M.runWeakMonad (runWP tr ref)
+
+runWeakMonadStrongPacket :: RemoteMonad
+runWeakMonadStrongPacket = RemoteMonad "WeakMonadStrongPacket" $ \ tr ref -> M.runWeakMonad (SP.runStrong (runWP tr ref))
+
 
 ----------------------------------------------------------------
 
@@ -193,7 +200,7 @@ testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
     r2 <- run $ sendM dev2 m
     tr2 <- run $ traceDevice dev2
 
-    monitor (collect tr1)
+    monitor $ collect $ (runMe1, runMe2, tr1)
     return (r1 == r2 && tr1 == tr2)
     
 -- Test the remote push primitive
