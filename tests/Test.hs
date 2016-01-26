@@ -206,6 +206,14 @@ arbitraryRemoteMonad' base n = frequency
             f  <- arbitrary
             return (fmap f m1 <*> m2)
     )
+  , (1 , do m1 <- arbitraryRemoteMonadA (n `div` 2)
+            m2 <- arbitraryRemoteMonad' base (n `div` 2)
+            return (m1 *> m2)
+    )
+  , (1 , do m1 <- arbitraryRemoteMonadA (n `div` 2)
+            m2 <- arbitraryRemoteMonad' base (n `div` 2)
+            return (m2 <* m1) -- reversed, because we want to return m2's result
+    )
   ]
 
 arbitraryRemoteMonadUnit :: Int -> Gen (M.Remote C P ())
