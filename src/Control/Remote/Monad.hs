@@ -79,11 +79,11 @@ runStrongMonad f p = do
         modify (\ (HStrong cs) -> HStrong (cs . Strong.Command c))
         return r
     go (A.Procedure g p) = do
-        r <- go g
+        r1 <- go g
         HStrong cs <- get 
         put (HStrong id)
-        lift $ f $ cs $ Strong.Procedure $ p
-        return undefined
+        r2 <- lift $ f $ cs $ Strong.Procedure $ p
+        return $ r1 r2
 
 instance SendMonad A.Remote where
   sendMonad = runApplicativeMonad
