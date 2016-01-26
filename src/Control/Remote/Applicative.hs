@@ -71,7 +71,7 @@ instance SendApplicative Strong where
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
 runStrongApplicative f p = do
     (r,HStrong h) <- runStateT (go p) (HStrong id)
-    f $ h $ Strong.Pure ()
+    f $ h $ Strong.Done
     return r
   where
     go :: forall a . Remote c p a -> StateT (HStrong c p) m a

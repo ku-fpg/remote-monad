@@ -82,7 +82,7 @@ runWP tr ref (WP.Procedure (Pop)) = do
 runSP :: IORef [String] -> IORef [A] -> SP.Strong C P a -> IO a
 runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Command c) >> runSP tr ref pk
 runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
-runSP tr ref (SP.Pure a)         = pure a
+runSP tr ref SP.Done             = pure ()
 
 runAppP :: IORef [String] -> IORef [A] -> Ap.Remote C P a -> IO a
 runAppP tr ref (Ap.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Command c)

@@ -69,7 +69,7 @@ instance SendMonad Strong where
 runStrongMonad :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
 runStrongMonad f p = do
     (r,HStrong h) <- runStateT (go2 p) (HStrong id)
-    f $ h $ Strong.Pure ()
+    f $ h $ Strong.Done
     return r
   where
     go2 :: forall a . Remote c p a -> StateT (HStrong c p) m a
