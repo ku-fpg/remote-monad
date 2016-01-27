@@ -25,15 +25,13 @@ data Weak (c :: *) (p :: * -> *) (a :: *) where
 
 deriving instance (Show c, Show (p a)) => Show (Weak c p a)
 
-instance Read (Transport (Weak c p)) where
-  readsPrec _ r0 = []
-{-
-        [ (Transport $ Command c p,r2)
-        | (c,r1)      <- reads r0
-        , (";",r2)    <- lex r1
-        , (Transport p,r2) <- reads r2
+instance (Read c, Read (Transport p)) => Read (Transport (Weak c p)) where
+  readsPrec d = readParen (d > 10) $ \ r0 ->
+        [ (Transport $ Command c,r2)
+        | ("Command",r1) <- lex r0
+        , (c,r2)         <- readsPrec 11 r1
         ] ++
-        [ (Transport $ Procedure_ q, r1)
-        | (Transport q,r1) <- reads r0
+        [ (Transport $ Procedure p,r2)
+        | ("Procedure",r1) <- lex r0
+        , (Transport p,r2) <- readsPrec 11 r1
         ] 
- -}
