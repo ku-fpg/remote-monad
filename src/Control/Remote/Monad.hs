@@ -75,9 +75,9 @@ instance MonadPacket Strong where
 instance MonadPacket A.RemoteApplicative where
   runMonad = runApplicativeMonad
 
-runWeakMonad :: (Monad m, A.ApplicativePacket f) => (f c p ~> m) -> (RemoteMonad c p ~> m)
-runWeakMonad f (Appl g)   = A.runApplicative f g
-runWeakMonad f (Bind g k) = A.runApplicative f g >>= runWeakMonad f . k
+runWeakMonad :: (Monad m) => (Weak c p ~> m) -> (RemoteMonad c p ~> m)
+runWeakMonad f (Appl g)   = A.runWeakApplicative f g
+runWeakMonad f (Bind g k) = A.runWeakApplicative f g >>= runWeakMonad f . k
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.

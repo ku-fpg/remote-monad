@@ -100,8 +100,6 @@ instance Show RemoteMonad where
 instance Arbitrary RemoteMonad where
   arbitrary = elements 
     [ runWeakMonadWeakPacket
-    , runWeakMonadStrongPacket
-    , runWeakMonadApplicativePacket
     , runStrongMonadWeakPacket
     , runStrongMonadStrongPacket
     , runApplicativeMonadWeakPacket
@@ -114,14 +112,6 @@ instance Arbitrary RemoteMonad where
 runWeakMonadWeakPacket :: RemoteMonad
 runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" 
   $ \ tr ref -> M.runWeakMonad (runWP tr ref)
-
-runWeakMonadStrongPacket :: RemoteMonad
-runWeakMonadStrongPacket = RemoteMonad "WeakMonadStrongPacket" 
-  $ \ tr ref -> M.runWeakMonad (runSP tr ref)
-
-runWeakMonadApplicativePacket :: RemoteMonad
-runWeakMonadApplicativePacket = RemoteMonad "WeakMonadApplicativePacket" 
-  $ \ tr ref -> M.runWeakMonad (runAppP tr ref)
 
 runStrongMonadWeakPacket :: RemoteMonad
 runStrongMonadWeakPacket = RemoteMonad "StrongMonadWeakPacket" 
