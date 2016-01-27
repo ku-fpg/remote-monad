@@ -100,7 +100,7 @@ runStrongApplicative f p = do
         return $ r1 r2
 
 -- | This simulates a 'RemoteApplicative', to see if it only contains commands, and if so,
--- returns the static result. The commands still need executed. The term super-commmand
+-- returns the static result. The commands still need executed. The term super-command
 -- is a play on Hughes' super-combinator terminology.
 
 superCommand :: RemoteApplicative c p a -> Maybe a
