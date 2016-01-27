@@ -92,7 +92,7 @@ runAppP tr ref (Ap.Pure a)        = pure a
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
 
-data RemoteMonad = RemoteMonad String (forall a . IORef [String] -> IORef [A] -> M.Remote C P a -> IO a)
+data RemoteMonad = RemoteMonad String (forall a . IORef [String] -> IORef [A] -> M.RemoteMonad C P a -> IO a)
 
 instance Show RemoteMonad where
   show (RemoteMonad msg _) = "Remote Monad: " ++ msg
@@ -146,9 +146,9 @@ runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativeP
 
 ----------------------------------------------------------------
 
-data DeviceM = Device (IORef [String]) (IORef [A]) (forall a . M.Remote C P a -> IO a)
+data DeviceM = Device (IORef [String]) (IORef [A]) (forall a . M.RemoteMonad C P a -> IO a)
 
-sendM :: DeviceM -> M.Remote C P a -> IO a
+sendM :: DeviceM -> M.RemoteMonad C P a -> IO a
 sendM (Device _ _ f) = f
 
 newDevice :: [A] 
@@ -171,7 +171,7 @@ traceDevice (Device tr _ _) = readIORef tr
 
 ----------------------------------------------------------------
 
-newtype Remote a = Remote (M.Remote C P a)
+newtype Remote a = Remote (M.RemoteMonad C P a)
 
 instance Show (Remote a) where
   show _ = "<REMOTE>"
@@ -182,14 +182,14 @@ instance Arbitrary (Remote A) where
 ----------------------------------------------------------------
 
 data RemoteBind :: * -> * where
-  RemoteBind :: Arbitrary a => M.Remote C P a -> (a -> M.Remote C P b) -> RemoteBind b
+  RemoteBind :: Arbitrary a => M.RemoteMonad C P a -> (a -> M.RemoteMonad C P b) -> RemoteBind b
 
 instance Show (RemoteBind a) where
   show _ = "<REMOTEBIND>"
 
 ----------------------------------------------------------------
 
-arbitraryRemoteMonad' :: (CoArbitrary a, Arbitrary a) => [Gen (M.Remote C P a)] -> Int -> Gen (M.Remote C P a)
+arbitraryRemoteMonad' :: (CoArbitrary a, Arbitrary a) => [Gen (M.RemoteMonad C P a)] -> Int -> Gen (M.RemoteMonad C P a)
 arbitraryRemoteMonad' base 0 = oneof base 
 arbitraryRemoteMonad' base n = frequency 
   [ (1 , oneof base)
@@ -215,24 +215,24 @@ arbitraryRemoteMonad' base n = frequency
     )
   ]
 
-arbitraryRemoteMonadUnit :: Int -> Gen (M.Remote C P ())
+arbitraryRemoteMonadUnit :: Int -> Gen (M.RemoteMonad C P ())
 arbitraryRemoteMonadUnit = arbitraryRemoteMonad'
   [ return (return ())
   , M.command . Push <$> arbitrary
   ]
 
-arbitraryRemoteMonadMaybeA :: Int -> Gen (M.Remote C P (Maybe A))
+arbitraryRemoteMonadMaybeA :: Int -> Gen (M.RemoteMonad C P (Maybe A))
 arbitraryRemoteMonadMaybeA = arbitraryRemoteMonad'
   [ return <$> arbitrary
   , return $ M.procedure Pop
   ]
 
-arbitraryRemoteMonadA :: Int -> Gen (M.Remote C P A)
+arbitraryRemoteMonadA :: Int -> Gen (M.RemoteMonad C P A)
 arbitraryRemoteMonadA = arbitraryRemoteMonad'
   [ return <$> arbitrary
   ]
 
-arbitraryBind :: (Int -> Gen (M.Remote C P a)) -> Int -> Gen (RemoteBind a)
+arbitraryBind :: (Int -> Gen (M.RemoteMonad C P a)) -> Int -> Gen (RemoteBind a)
 arbitraryBind f n = oneof
   [ do m <- arbitraryRemoteMonadUnit (n `div` 2)
        k  <- promote (`coarbitrary` f (n `div` 2))  -- look for a better way of doing this

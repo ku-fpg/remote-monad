@@ -23,20 +23,20 @@ import Control.Remote.Monad.Packet.Strong as Strong
 
 import Control.Natural
 
-data Remote c p a where
-   Appl        :: A.RemoteApplicative c p a -> Remote c p a
-   Bind        :: A.RemoteApplicative c p a -> (a -> Remote c p b) -> Remote c p b
+data RemoteMonad c p a where
+   Appl        :: A.RemoteApplicative c p a -> RemoteMonad c p a
+   Bind        :: A.RemoteApplicative c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
   
-instance Functor (Remote c p) where
+instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
 
-instance Applicative (Remote c p) where
+instance Applicative (RemoteMonad c p) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
   Appl f   <*> Bind m k = Bind (pure (,) <*> f <*> m) (\ (a,b) -> fmap a $ k b)
   Bind m k <*> r        = Bind m (\ a -> k a <*> r)
 
-instance Monad (Remote c p) where
+instance Monad (RemoteMonad c p) where
   return = pure
   Appl m >>= k    = Bind m k
   Bind m k >>= k2 = Bind m (\ a -> k a >>= k2)
@@ -44,17 +44,17 @@ instance Monad (Remote c p) where
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
 -- | promote a command into the remote monad
-command :: c -> Remote c p ()
+command :: c -> RemoteMonad c p ()
 command = Appl . A.command
 
 -- | promote a procedure into the remote monad
-procedure :: p a -> Remote c p a
+procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure 
 
 class SendMonad f where
-  sendMonad :: (Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+  sendMonad :: (Monad m) => (f c p ~> m) -> (RemoteMonad c p ~> m)
 
-runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (Remote c p ~> m)
+runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (RemoteMonad c p ~> m)
 runWeakMonad f (Appl g)   = A.sendApplicative f g
 runWeakMonad f (Bind g k) = A.sendApplicative f g >>= runWeakMonad f . k
 
@@ -66,13 +66,13 @@ instance SendMonad Strong where
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.
-runStrongMonad :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
+runStrongMonad :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteMonad c p ~> m)
 runStrongMonad f p = do
     (r,HStrong h) <- runStateT (go2 p) (HStrong id)
     f $ h $ Strong.Done
     return r
   where
-    go2 :: forall a . Remote c p a -> StateT (HStrong c p) m a
+    go2 :: forall a . RemoteMonad c p a -> StateT (HStrong c p) m a
     go2 (Appl app)   = go app
     go2 (Bind app k) = go app >>= \ a -> go2 (k a)
 
@@ -94,13 +94,13 @@ instance SendMonad A.RemoteApplicative where
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.
-runApplicativeMonad :: forall m c p . (Monad m) => (A.RemoteApplicative c p ~> m) -> (Remote c p ~> m)
+runApplicativeMonad :: forall m c p . (Monad m) => (A.RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
 runApplicativeMonad f p = do
     (r,h) <- runStateT (go2 p) (pure ())
     f $ h
     return r
   where
-    go2 :: forall a . Remote c p a -> StateT (A.RemoteApplicative c p ()) m a
+    go2 :: forall a . RemoteMonad c p a -> StateT (A.RemoteApplicative c p ()) m a
     go2 (Appl app)   = go app
     go2 (Bind app k) = go app >>= \ a -> go2 (k a)
 
