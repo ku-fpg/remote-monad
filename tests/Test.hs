@@ -22,9 +22,10 @@ import Data.Foldable (toList)
 import Data.Sequence (Seq, fromList)
 
 import qualified Control.Remote.Monad as M
+import           Control.Remote.Monad.Packet.Applicative as AP
 import qualified Control.Remote.Monad.Packet.Weak as WP
 import qualified Control.Remote.Monad.Packet.Strong as SP
-import qualified Control.Remote.Applicative as Ap
+import qualified Control.Remote.Applicative as A
 
 
 import Test.QuickCheck 
@@ -83,10 +84,10 @@ runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Command c) >> runSP tr ref p
 runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
 runSP tr ref SP.Done             = pure ()
 
-runAppP :: IORef [String] -> IORef [A] -> Ap.RemoteApplicative C P a -> IO a
-runAppP tr ref (Ap.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Command c)
-runAppP tr ref (Ap.Procedure g p) = runAppP tr ref g <*> runWP tr ref (WP.Procedure p)
-runAppP tr ref (Ap.Pure a)        = pure a
+runAppP :: IORef [String] -> IORef [A] -> RemoteApplicative C P a -> IO a
+runAppP tr ref (AP.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Command c)
+runAppP tr ref (AP.Procedure g p) = runAppP tr ref g <*> runWP tr ref (WP.Procedure p)
+runAppP tr ref (AP.Pure a)        = pure a
 
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
@@ -132,11 +133,11 @@ runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket"
 
 runApplicativeMonadWeakPacket :: RemoteMonad
 runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (Ap.runApplicative (runWP tr ref))
+  $ \ tr ref -> M.runApplicativeMonad (AP.runApplicative (runWP tr ref))
 
 runApplicativeMonadStrongPacket :: RemoteMonad
 runApplicativeMonadStrongPacket = RemoteMonad "ApplicativeMonadStrongPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (Ap.runApplicative (runSP tr ref))
+  $ \ tr ref -> M.runApplicativeMonad (AP.runApplicative (runSP tr ref))
 
 runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 

@@ -21,6 +21,7 @@ source-repository head
 
 library
   exposed-modules:     
+                       Control.Remote.Monad.Packet.Applicative
                        Control.Remote.Monad.Packet.Weak
                        Control.Remote.Monad.Packet.Strong
                        Control.Remote.Applicative

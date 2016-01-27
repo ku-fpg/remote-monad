@@ -29,8 +29,9 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
 import qualified Control.Remote.Applicative as A
-import Control.Remote.Monad.Packet.Weak as Weak
-import Control.Remote.Monad.Packet.Strong as Strong
+import qualified Control.Remote.Monad.Packet.Applicative as A
+import           Control.Remote.Monad.Packet.Weak as Weak
+import           Control.Remote.Monad.Packet.Strong as Strong
 
 import Control.Natural
 
