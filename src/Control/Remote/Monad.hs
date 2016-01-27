@@ -21,6 +21,7 @@ module Control.Remote.Monad
     -- * The run functions
   , runMonad
   , runWeakMonad
+  , runBindeeMonad
   , runStrongMonad
   , runApplicativeMonad
   ) where
@@ -29,15 +30,15 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
 import qualified Control.Remote.Applicative as A
-import qualified Control.Remote.Monad.Packet.Applicative as A
+import           Control.Remote.Monad.Packet.Applicative as A
 import           Control.Remote.Monad.Packet.Weak as Weak
 import           Control.Remote.Monad.Packet.Strong as Strong
 
 import Control.Natural
 
 data RemoteMonad c p a where
-   Appl        :: A.RemoteApplicative c p a -> RemoteMonad c p a
-   Bind        :: A.RemoteApplicative c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
+   Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
+   Bind        :: RemoteApplicative c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
   
 instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
@@ -64,6 +65,8 @@ procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure 
 
 class MonadPacket f where
+  -- | This overloaded function chooses the best bundling strategy
+  --   based on the type of the handler your provide.
   runMonad :: (Monad m) => (f c p ~> m) -> (RemoteMonad c p ~> m)
 
 instance MonadPacket Weak where
@@ -75,12 +78,25 @@ instance MonadPacket Strong where
 instance MonadPacket A.RemoteApplicative where
   runMonad = runApplicativeMonad
 
-runWeakMonad :: (Monad m) => (Weak c p ~> m) -> (RemoteMonad c p ~> m)
-runWeakMonad f (Appl g)   = A.runWeakApplicative f g
-runWeakMonad f (Bind g k) = A.runWeakApplicative f g >>= runWeakMonad f . k
 
--- promote a Strong packet transport, into a Monad packet transport.
--- This is the classical remote monad.
+-- | This is a remote monad combinator, that takes an implementation
+--   of a remote applicative, splits the monad into applicatives
+--   without any merge stragegy, and uses the remote applicative.
+--   Every '>>=' will generate a call to the 'RemoteApplicative'
+--   handler; hence the name runBindee.
+--   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
+runBindeeMonad :: (Monad m) => (RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
+runBindeeMonad f (Appl g)   = f g
+runBindeeMonad f (Bind g k) = f g >>= runBindeeMonad f . k
+ 
+-- | This is the classic weak remote monad, or technically the
+--   weak remote applicative weak remote monad.
+runWeakMonad :: (Monad m) => (Weak c p ~> m) -> (RemoteMonad c p ~> m)
+runWeakMonad f = runBindeeMonad (runWeakApplicative f)
+
+-- | This is the classic strong remote monad. It bundles
+--   packets (of type 'Strong') as large as possible,
+--   including over some monadic binds.
 runStrongMonad :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteMonad c p ~> m)
 runStrongMonad f p = do
     (r,HStrong h) <- runStateT (go2 p) (HStrong id)
@@ -91,7 +107,7 @@ runStrongMonad f p = do
     go2 (Appl app)   = go app
     go2 (Bind app k) = go app >>= \ a -> go2 (k a)
 
-    go :: forall a . A.RemoteApplicative c p a -> StateT (HStrong c p) m a
+    go :: forall a . RemoteApplicative c p a -> StateT (HStrong c p) m a
     go (A.Pure a)        = return a
     go (A.Command g c)   = do
         r <- go g
@@ -104,8 +120,9 @@ runStrongMonad f p = do
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
 
--- promote a Strong packet transport, into a Monad packet transport.
--- This is the classical remote monad.
+-- | The is the strong applicative strong remote monad. It bundles
+--   packets (of type 'RemoteApplicative') as large as possible, 
+--   including over some monadic binds.
 runApplicativeMonad :: forall m c p . (Monad m) => (A.RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
 runApplicativeMonad f p = do
     (r,h) <- runStateT (go2 p) (pure ())

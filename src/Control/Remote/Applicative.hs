@@ -24,6 +24,7 @@ module Control.Remote.Applicative
   , runApplicative
   , runWeakApplicative
   , runStrongApplicative
+  , runApplicativeApplicative
   ) where
 
 

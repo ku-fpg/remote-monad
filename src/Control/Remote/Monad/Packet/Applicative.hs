@@ -20,6 +20,7 @@ module Control.Remote.Monad.Packet.Applicative
   , ApplicativePacket(runApplicative)
   , runWeakApplicative
   , runStrongApplicative
+  , runApplicativeApplicative
     -- * Utility
   , superCommand
   ) where
@@ -63,6 +64,8 @@ procedure :: p a -> RemoteApplicative c p a
 procedure p = Procedure (pure id) p
 
 class ApplicativePacket f where
+  -- | This overloaded function chooses the best bundling strategy
+  --   based on the type of the handler your provide.
   runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
 
 instance ApplicativePacket Weak where
@@ -72,14 +75,16 @@ instance ApplicativePacket Strong where
   runApplicative = runStrongApplicative
 
 instance ApplicativePacket RemoteApplicative where
-  runApplicative = id
+  runApplicative = runApplicativeApplicative
+
+-- | The weak remote applicative, that sends commands and procedures piecemeal.
 
 runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (RemoteApplicative c p ~> m)
 runWeakApplicative f (Command   g c) = runWeakApplicative f g <*  f (Weak.Command c)
 runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
 runWeakApplicative f (Pure        a) = pure a
 
--- | promote a Strong packet transport, into an Applicative packet transport.
+-- | The strong remote applicative, that bundles together commands.
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteApplicative c p ~> m)
 runStrongApplicative f p = do
     (r,HStrong h) <- runStateT (go p) (HStrong id)
@@ -98,6 +103,10 @@ runStrongApplicative f p = do
         put (HStrong id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
+
+-- | The applicative remote applicative, that is the identity function.
+runApplicativeApplicative :: (RemoteApplicative c p ~> m) -> (RemoteApplicative c p ~> m)
+runApplicativeApplicative = id
 
 -- | This simulates a 'RemoteApplicative', to see if it only contains commands, and if so,
 -- returns the static result. The commands still need executed. The term super-command
