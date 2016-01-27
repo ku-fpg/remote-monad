@@ -12,7 +12,18 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad where
+module Control.Remote.Monad 
+  ( -- * The remote monad
+    RemoteMonad
+    -- * The primitive lift functions
+  , command
+  , procedure
+    -- * The run functions
+  , runMonad
+  , runWeakMonad
+  , runStrongMonad
+  , runApplicativeMonad
+  ) where
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
@@ -51,18 +62,21 @@ command = Appl . A.command
 procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure 
 
-class SendMonad f where
-  sendMonad :: (Monad m) => (f c p ~> m) -> (RemoteMonad c p ~> m)
+class MonadPacket f where
+  runMonad :: (Monad m) => (f c p ~> m) -> (RemoteMonad c p ~> m)
 
-runWeakMonad :: (Monad m, A.SendApplicative f) => (f c p ~> m) -> (RemoteMonad c p ~> m)
-runWeakMonad f (Appl g)   = A.sendApplicative f g
-runWeakMonad f (Bind g k) = A.sendApplicative f g >>= runWeakMonad f . k
+instance MonadPacket Weak where
+  runMonad = runWeakMonad
 
-instance SendMonad Weak where
-  sendMonad = runWeakMonad
+instance MonadPacket Strong where
+  runMonad = runStrongMonad
 
-instance SendMonad Strong where
-  sendMonad = runStrongMonad
+instance MonadPacket A.RemoteApplicative where
+  runMonad = runApplicativeMonad
+
+runWeakMonad :: (Monad m, A.ApplicativePacket f) => (f c p ~> m) -> (RemoteMonad c p ~> m)
+runWeakMonad f (Appl g)   = A.runApplicative f g
+runWeakMonad f (Bind g k) = A.runApplicative f g >>= runWeakMonad f . k
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.
@@ -88,9 +102,6 @@ runStrongMonad f p = do
         put (HStrong id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
-
-instance SendMonad A.RemoteApplicative where
-  sendMonad = runApplicativeMonad
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.

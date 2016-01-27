@@ -88,7 +88,6 @@ runAppP tr ref (Ap.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Comman
 runAppP tr ref (Ap.Procedure g p) = runAppP tr ref g <*> runWP tr ref (WP.Procedure p)
 runAppP tr ref (Ap.Pure a)        = pure a
 
-
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
 
@@ -133,11 +132,11 @@ runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket"
 
 runApplicativeMonadWeakPacket :: RemoteMonad
 runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (Ap.sendApplicative (runWP tr ref))
+  $ \ tr ref -> M.runApplicativeMonad (Ap.runApplicative (runWP tr ref))
 
 runApplicativeMonadStrongPacket :: RemoteMonad
 runApplicativeMonadStrongPacket = RemoteMonad "ApplicativeMonadStrongPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (Ap.sendApplicative (runSP tr ref))
+  $ \ tr ref -> M.runApplicativeMonad (Ap.runApplicative (runSP tr ref))
 
 runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 

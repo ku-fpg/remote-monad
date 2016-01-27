@@ -13,7 +13,21 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Applicative where
+module Control.Remote.Applicative 
+  ( -- * The remote applicative
+    RemoteApplicative(..)
+    -- * The primitive lift functions
+  , command
+  , procedure
+    -- * The run functions
+  , ApplicativePacket
+  , runApplicative
+  , runWeakApplicative
+  , runStrongApplicative
+    -- * Utility
+  , superCommand
+  ) where
+
 
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
@@ -52,19 +66,22 @@ command c = Command (pure ()) c
 procedure :: p a -> RemoteApplicative c p a
 procedure p = Procedure (pure id) p
 
-class SendApplicative f where
-  sendApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
+class ApplicativePacket f where
+  runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
 
-instance SendApplicative Weak where
-  sendApplicative = runWeakApplicative
+instance ApplicativePacket Weak where
+  runApplicative = runWeakApplicative
+
+instance ApplicativePacket Strong where
+  runApplicative = runStrongApplicative
+
+instance ApplicativePacket RemoteApplicative where
+  runApplicative = id
 
 runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (RemoteApplicative c p ~> m)
 runWeakApplicative f (Command   g c) = runWeakApplicative f g <*  f (Weak.Command c)
 runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
 runWeakApplicative f (Pure        a) = pure a
-
-instance SendApplicative Strong where
-  sendApplicative = runStrongApplicative
 
 -- | promote a Strong packet transport, into an Applicative packet transport.
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteApplicative c p ~> m)
@@ -85,9 +102,6 @@ runStrongApplicative f p = do
         put (HStrong id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
-
-instance SendApplicative RemoteApplicative where
-  sendApplicative = id
 
 -- | This simulates a 'RemoteApplicative', to see if it only contains commands, and if so,
 -- returns the static result. The commands still need executed. The term super-commmand
