@@ -78,13 +78,12 @@ runWP tr ref (WP.Procedure (Pop)) = do
           return (Just x)
 
 
--- TODO: replace with actual packet evaluators (that can call runWP).
 runSP :: IORef [String] -> IORef [A] -> SP.Strong C P a -> IO a
 runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Command c) >> runSP tr ref pk
 runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
 runSP tr ref SP.Done             = pure ()
 
-runAppP :: IORef [String] -> IORef [A] -> Ap.Remote C P a -> IO a
+runAppP :: IORef [String] -> IORef [A] -> Ap.RemoteApplicative C P a -> IO a
 runAppP tr ref (Ap.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Command c)
 runAppP tr ref (Ap.Procedure g p) = runAppP tr ref g <*> runWP tr ref (WP.Procedure p)
 runAppP tr ref (Ap.Pure a)        = pure a

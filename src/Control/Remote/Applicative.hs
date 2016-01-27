@@ -24,20 +24,19 @@ import qualified Control.Remote.Monad.Packet.Weak as Weak
 import           Control.Remote.Monad.Packet.Weak (Weak)
 import Control.Natural
 
--- | An Applicative Remote, that can encode both commands and procedures, bundled together.
--- terminated by an optional 'Procedure'.
+-- | A Remote Applicative, that can encode both commands and procedures, bundled together.
 
-data Remote (c :: *) (p :: * -> *) (a :: *) where
-   Command   :: Remote c p b        -> c   -> Remote c p b
-   Procedure :: Remote c p (a -> b) -> p a -> Remote c p b
-   Pure      :: a                          -> Remote c p a 
+data RemoteApplicative (c :: *) (p :: * -> *) (a :: *) where
+   Command   :: RemoteApplicative c p b        -> c   -> RemoteApplicative c p b
+   Procedure :: RemoteApplicative c p (a -> b) -> p a -> RemoteApplicative c p b
+   Pure      :: a                                     -> RemoteApplicative c p a 
 
-instance Functor (Remote c p) where
+instance Functor (RemoteApplicative c p) where
   fmap f (Command g c)   = Command (fmap f g) c
   fmap f (Procedure g p) = Procedure (fmap (f .) g) p
   fmap f (Pure a)        = Pure (f a)
 
-instance Applicative (Remote c p) where
+instance Applicative (RemoteApplicative c p) where
   pure a = Pure a
   (Pure f) <*> m = fmap f m
   (Command g c)   <*> (Pure a)        = Command (fmap (\ f -> f a) g) c
@@ -46,20 +45,20 @@ instance Applicative (Remote c p) where
   m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
 
 -- | promote a command into the applicative
-command :: c -> Remote c p ()
+command :: c -> RemoteApplicative c p ()
 command c = Command (pure ()) c
 
 -- | promote a command into the applicative
-procedure :: p a -> Remote c p a
+procedure :: p a -> RemoteApplicative c p a
 procedure p = Procedure (pure id) p
 
 class SendApplicative f where
-  sendApplicative :: (Monad m) => (f c p ~> m) -> (Remote c p ~> m)
+  sendApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
 
 instance SendApplicative Weak where
   sendApplicative = runWeakApplicative
 
-runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (Remote c p ~> m)
+runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (RemoteApplicative c p ~> m)
 runWeakApplicative f (Command   g c) = runWeakApplicative f g <*  f (Weak.Command c)
 runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
 runWeakApplicative f (Pure        a) = pure a
@@ -68,13 +67,13 @@ instance SendApplicative Strong where
   sendApplicative = runStrongApplicative
 
 -- | promote a Strong packet transport, into an Applicative packet transport.
-runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (Remote c p ~> m)
+runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteApplicative c p ~> m)
 runStrongApplicative f p = do
     (r,HStrong h) <- runStateT (go p) (HStrong id)
     f $ h $ Strong.Done
     return r
   where
-    go :: forall a . Remote c p a -> StateT (HStrong c p) m a
+    go :: forall a . RemoteApplicative c p a -> StateT (HStrong c p) m a
     go (Pure a)        = return a
     go (Command g c)   = do
         r <- go g
@@ -87,13 +86,14 @@ runStrongApplicative f p = do
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
 
-instance SendApplicative Remote where
+instance SendApplicative RemoteApplicative where
   sendApplicative = id
 
--- | This simulates a 'Remote', to see if it only contains commands, and if so,
--- returns the static result. The commands still need executed.
+-- | This simulates a 'RemoteApplicative', to see if it only contains commands, and if so,
+-- returns the static result. The commands still need executed. The term super-commmand
+-- is a play on Hughes' super-combinator terminology.
 
-superCommand :: Remote c p a -> Maybe a
+superCommand :: RemoteApplicative c p a -> Maybe a
 superCommand (Pure a)        = Just a
 superCommand (Command g _)   = superCommand g
 superCommand (Procedure _ _) = Nothing

@@ -24,8 +24,8 @@ import Control.Remote.Monad.Packet.Strong as Strong
 import Control.Natural
 
 data Remote c p a where
-   Appl        :: A.Remote c p a -> Remote c p a
-   Bind        :: A.Remote c p a -> (a -> Remote c p b) -> Remote c p b
+   Appl        :: A.RemoteApplicative c p a -> Remote c p a
+   Bind        :: A.RemoteApplicative c p a -> (a -> Remote c p b) -> Remote c p b
   
 instance Functor (Remote c p) where
   fmap f m = pure f <*> m
@@ -76,7 +76,7 @@ runStrongMonad f p = do
     go2 (Appl app)   = go app
     go2 (Bind app k) = go app >>= \ a -> go2 (k a)
 
-    go :: forall a . A.Remote c p a -> StateT (HStrong c p) m a
+    go :: forall a . A.RemoteApplicative c p a -> StateT (HStrong c p) m a
     go (A.Pure a)        = return a
     go (A.Command g c)   = do
         r <- go g
@@ -89,22 +89,22 @@ runStrongMonad f p = do
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
 
-instance SendMonad A.Remote where
+instance SendMonad A.RemoteApplicative where
   sendMonad = runApplicativeMonad
 
 -- promote a Strong packet transport, into a Monad packet transport.
 -- This is the classical remote monad.
-runApplicativeMonad :: forall m c p . (Monad m) => (A.Remote c p ~> m) -> (Remote c p ~> m)
+runApplicativeMonad :: forall m c p . (Monad m) => (A.RemoteApplicative c p ~> m) -> (Remote c p ~> m)
 runApplicativeMonad f p = do
     (r,h) <- runStateT (go2 p) (pure ())
     f $ h
     return r
   where
-    go2 :: forall a . Remote c p a -> StateT (A.Remote c p ()) m a
+    go2 :: forall a . Remote c p a -> StateT (A.RemoteApplicative c p ()) m a
     go2 (Appl app)   = go app
     go2 (Bind app k) = go app >>= \ a -> go2 (k a)
 
-    go :: forall a . A.Remote c p a -> StateT (A.Remote c p ()) m a
+    go :: forall a . A.RemoteApplicative c p a -> StateT (A.RemoteApplicative c p ()) m a
     go ap = case A.superCommand ap of
                 Nothing -> do
                   ap' <- get
