@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.Monad.Strong.Strong
+Module:      Control.Remote.Monad.Packet.Strong
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -15,23 +15,23 @@ Portability: GHC
 module Control.Remote.Monad.Packet.Strong where
 
 import qualified Control.Remote.Monad.Packet.Weak as Weak
-import           Control.Remote.Monad.Packet.Weak (Weak)
+import           Control.Remote.Monad.Packet.Weak (WeakPacket)
 import           Control.Natural
 
 
 -- | A Strong Packet, that can encode a list of commands, terminated by an optional procedure.
 
-data Strong (c :: *) (p :: * -> *) (a :: *) where
-   Command   :: c -> Strong c p b -> Strong c p b
-   Procedure :: p a               -> Strong c p a
-   Done      ::                      Strong c p ()
+data StrongPacket (c :: *) (p :: * -> *) (a :: *) where
+   Command   :: c -> StrongPacket c p b -> StrongPacket c p b
+   Procedure :: p a                     -> StrongPacket c p a
+   Done      ::                            StrongPacket c p ()
 
 -- | promote a Weak packet transporter, into a Strong packet transporter.
-runStrong :: (Applicative m) => (Weak c p ~> m) -> (Strong c p ~> m)
-runStrong f (Command c pk) = f (Weak.Command c)   *> runStrong f pk
-runStrong f (Procedure p)  = f (Weak.Procedure p)
-runStrong f Done           = pure ()
+runStrongPacket :: (Applicative m) => (WeakPacket c p ~> m) -> (StrongPacket c p ~> m)
+runStrongPacket f (Command c pk) = f (Weak.Command c)   *> runStrongPacket f pk
+runStrongPacket f (Procedure p)  = f (Weak.Procedure p)
+runStrongPacket f Done           = pure ()
 
--- | A Hughes-style version of 'Strong', with efficent append.
-newtype HStrong c p = HStrong (Strong c p ~> Strong c p)
+-- | A Hughes-style version of 'StrongPacket', with efficent append.
+newtype HStrongPacket c p = HStrongPacket (StrongPacket c p ~> StrongPacket c p)
 

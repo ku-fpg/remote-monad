@@ -25,9 +25,6 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
 import qualified Control.Remote.Monad.Packet.Strong as Strong
-import           Control.Remote.Monad.Packet.Strong (Strong, HStrong(..))
-import qualified Control.Remote.Monad.Packet.Weak as Weak
-import           Control.Remote.Monad.Packet.Weak (Weak)
 import Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.

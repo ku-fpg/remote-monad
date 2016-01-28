@@ -62,7 +62,7 @@ data P :: * -> * where
 
 -- Basic evaluator
 
-runWP :: IORef [String] -> IORef [A] -> WP.Weak C P a -> IO a
+runWP :: IORef [String] -> IORef [A] -> WP.WeakPacket C P a -> IO a
 runWP tr ref (WP.Command (Push a)) = do
     stack <- readIORef ref
     writeIORef ref (a : stack)
@@ -79,7 +79,7 @@ runWP tr ref (WP.Procedure (Pop)) = do
           return (Just x)
 
 
-runSP :: IORef [String] -> IORef [A] -> SP.Strong C P a -> IO a
+runSP :: IORef [String] -> IORef [A] -> SP.StrongPacket C P a -> IO a
 runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Command c) >> runSP tr ref pk
 runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
 runSP tr ref SP.Done             = pure ()
@@ -115,7 +115,7 @@ runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket"
 
 runStrongMonadWeakPacket :: RemoteMonad
 runStrongMonadWeakPacket = RemoteMonad "StrongMonadWeakPacket" 
-  $ \ tr ref -> M.runStrongMonad (SP.runStrong (runWP tr ref))
+  $ \ tr ref -> M.runStrongMonad (SP.runStrongPacket (runWP tr ref))
 
 runStrongMonadStrongPacket :: RemoteMonad
 runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket" 

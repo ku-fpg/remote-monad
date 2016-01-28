@@ -27,7 +27,8 @@ library
                        Control.Remote.Monad.Packet.Transport
                        Control.Remote.Applicative
                        Control.Remote.Monad
-  -- other-modules:       
+  other-modules:       
+                       Control.Remote.Monad.Types
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
   build-depends:       base >=4.7 && < 5
                      , natural-transformation >= 0.3 && < 0.4

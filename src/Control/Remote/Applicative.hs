@@ -20,7 +20,6 @@ module Control.Remote.Applicative
   , command
   , procedure
     -- * The run functions
-  , ApplicativePacket'()
   , runApplicative
   , runWeakApplicative
   , runStrongApplicative
@@ -33,19 +32,11 @@ import Control.Monad.Trans.State.Strict
 
 import           Control.Remote.Monad.Packet.Applicative as A
 import qualified Control.Remote.Monad.Packet.Strong as Strong
-import           Control.Remote.Monad.Packet.Strong (Strong, HStrong(..))
+import           Control.Remote.Monad.Packet.Strong (StrongPacket, HStrongPacket(..))
 import qualified Control.Remote.Monad.Packet.Weak as Weak
-import           Control.Remote.Monad.Packet.Weak (Weak)
+import           Control.Remote.Monad.Packet.Weak (WeakPacket)
+import           Control.Remote.Monad.Types
 import           Control.Natural
-
-newtype RemoteApplicative c p a = RemoteApplicative (ApplicativePacket c p a)
-
-instance Functor (RemoteApplicative c p) where
-  fmap f (RemoteApplicative g) = RemoteApplicative (fmap f g)
-
-instance Applicative (RemoteApplicative c p) where
-  pure a = RemoteApplicative (pure a)
-  (RemoteApplicative f) <*> (RemoteApplicative g) = RemoteApplicative (f <*> g)
 
 -- | promote a command into the applicative
 command :: c -> RemoteApplicative c p ()
@@ -55,43 +46,43 @@ command c = RemoteApplicative (Command (pure ()) c)
 procedure :: p a -> RemoteApplicative c p a
 procedure p = RemoteApplicative (Procedure (pure id) p)
 
-class ApplicativePacket' f where
+class RunApplicative f where
   -- | This overloaded function chooses the best bundling strategy
   --   based on the type of the handler your provide.
   runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
 
-instance ApplicativePacket' Weak where
+instance RunApplicative WeakPacket where
   runApplicative = runWeakApplicative
 
-instance ApplicativePacket' Strong where
+instance RunApplicative StrongPacket where
   runApplicative = runStrongApplicative
 
-instance ApplicativePacket' ApplicativePacket where
+instance RunApplicative ApplicativePacket where
   runApplicative = runApplicativeApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
-runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (RemoteApplicative c p ~> m)
+runWeakApplicative :: forall m c p . (Applicative m) => (WeakPacket c p ~> m) -> (RemoteApplicative c p ~> m)
 runWeakApplicative f (RemoteApplicative (Command   g c)) = runWeakApplicative f (RemoteApplicative g) <*  f (Weak.Command c)
 runWeakApplicative f (RemoteApplicative (Procedure g p)) = runWeakApplicative f (RemoteApplicative g) <*> f (Weak.Procedure p)
 runWeakApplicative f (RemoteApplicative (Pure        a)) = pure a
 
 -- | The strong remote applicative, that bundles together commands.
-runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteApplicative c p ~> m)
+runStrongApplicative :: forall m c p . (Monad m) => (StrongPacket c p ~> m) -> (RemoteApplicative c p ~> m)
 runStrongApplicative f (RemoteApplicative p) = do
-    (r,HStrong h) <- runStateT (go p) (HStrong id)
+    (r,HStrongPacket h) <- runStateT (go p) (HStrongPacket id)
     f $ h $ Strong.Done
     return r
   where
-    go :: forall a . ApplicativePacket c p a -> StateT (HStrong c p) m a
+    go :: forall a . ApplicativePacket c p a -> StateT (HStrongPacket c p) m a
     go (Pure a)        = return a
     go (Command g c)   = do
         r <- go g
-        modify (\ (HStrong cs) -> HStrong (cs . Strong.Command c))
+        modify (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command c))
         return r
     go (Procedure g p) = do
         r1 <- go g
-        HStrong cs <- get 
-        put (HStrong id)
+        HStrongPacket cs <- get 
+        put (HStrongPacket id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r1 r2
 

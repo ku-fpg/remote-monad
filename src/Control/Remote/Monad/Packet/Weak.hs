@@ -19,13 +19,13 @@ import Control.Remote.Monad.Packet.Transport
 
 -- | A Weak Packet, that can encode a command or a procedure.
 
-data Weak (c :: *) (p :: * -> *) (a :: *) where
-   Command   :: c   -> Weak c p ()
-   Procedure :: p a -> Weak c p a
+data WeakPacket (c :: *) (p :: * -> *) (a :: *) where
+   Command   :: c   -> WeakPacket c p ()
+   Procedure :: p a -> WeakPacket c p a
 
-deriving instance (Show c, Show (p a)) => Show (Weak c p a)
+deriving instance (Show c, Show (p a)) => Show (WeakPacket c p a)
 
-instance (Read c, Read (Transport p)) => Read (Transport (Weak c p)) where
+instance (Read c, Read (Transport p)) => Read (Transport (WeakPacket c p)) where
   readsPrec d = readParen (d > 10) $ \ r0 ->
         [ (Transport $ Command c,r2)
         | ("Command",r1) <- lex r0
