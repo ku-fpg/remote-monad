@@ -4,7 +4,45 @@
 name:                remote-monad
 version:             0.1.0.0
 synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
-description:         An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
+description:         
+  An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
+  .
+  @
+    &#123;-&#35; LANGUAGE GADTs &#35;-&#125;
+    &#123;-&#35; LANGUAGE KindSignatures &#35;-&#125;
+    .
+    module Main where
+    .
+    import Control.Remote.Monad
+    import Control.Remote.Monad.Packet.Weak
+    .
+    data Command :: * where
+    &#32;&#32;Say :: String -> Command
+    .
+    data Procedure :: * -> * where
+    &#32;&#32;Temperature :: Procedure Int
+    .
+    say :: String -> RemoteMonad Command Procedure ()
+    say s = command (Say s)
+    .
+    temperature :: RemoteMonad Command Procedure Int
+    temperature = procedure Temperature
+    .
+    runWP ::  WeakPacket Command Procedure a -> IO a 
+    runWP (Command (Say s))  = print s  
+    runWP (Procedure Temperature) = return 42
+    .
+    send :: RemoteMonad Command Procedure a -> IO a
+    send m = runMonad runWP m
+    .
+    main = send $ do 
+    &#32;&#32;say "Howdy doodly do"     
+    &#32;&#32;say "How about a muffin?" 
+    &#32;&#32;t <- temperature          
+    &#32;&#32;say (show t ++ "F")       
+  @
+
+
 license:             BSD3
 license-file:        LICENSE
 author:              Andy Gill, Justin Dawson
