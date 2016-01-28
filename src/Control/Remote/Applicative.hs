@@ -15,7 +15,7 @@ Portability: GHC
 
 module Control.Remote.Applicative 
   ( -- * The remote applicative
-    RemoteApplicative(..) -- for now
+    RemoteApplicative
     -- * The primitive lift functions
   , command
   , procedure

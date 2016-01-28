@@ -57,7 +57,7 @@ instance RunMonad WeakPacket where
 instance RunMonad StrongPacket where
   runMonad = runStrongMonad
 
-instance RunMonad A.ApplicativePacket where
+instance RunMonad ApplicativePacket where
   runMonad = runApplicativeMonad
 
 -- | This is a remote monad combinator, that takes an implementation
@@ -66,7 +66,7 @@ instance RunMonad A.ApplicativePacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (Monad m) => (A.RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
+runMonadSkeleton :: (Monad m) => (RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
 runMonadSkeleton f (Appl g)   = f g
 runMonadSkeleton f (Bind g k) = f g >>= runMonadSkeleton f . k
  
@@ -88,10 +88,10 @@ runStrongMonad f p = do
     go2 (Appl app)   = go' app
     go2 (Bind app k) = go' app >>= \ a -> go2 (k a)
 
-    go' :: forall a . A.RemoteApplicative c p a -> StateT (HStrongPacket c p) m a
-    go' (A.RemoteApplicative m) = go m
+    go' :: forall a . RemoteApplicative c p a -> StateT (HStrongPacket c p) m a
+    go' (RemoteApplicative m) = go m
 
-    go :: forall a . A.ApplicativePacket c p a -> StateT (HStrongPacket c p) m a
+    go :: forall a . ApplicativePacket c p a -> StateT (HStrongPacket c p) m a
     go (A.Pure a)        = return a
     go (A.Command g c)   = do
         r <- go g
@@ -117,10 +117,10 @@ runApplicativeMonad f p = do
     go2 (Appl app)   = go' app
     go2 (Bind app k) = go' app >>= \ a -> go2 (k a)
 
-    go' :: forall a . A.RemoteApplicative c p a -> StateT (A.ApplicativePacket c p ()) m a
-    go' (A.RemoteApplicative m) = go m
+    go' :: forall a . RemoteApplicative c p a -> StateT (A.ApplicativePacket c p ()) m a
+    go' (RemoteApplicative m) = go m
 
-    go :: forall a . A.ApplicativePacket c p a -> StateT (A.ApplicativePacket c p ()) m a
+    go :: forall a . ApplicativePacket c p a -> StateT (A.ApplicativePacket c p ()) m a
     go ap = case A.superCommand ap of
                 Nothing -> do
                   ap' <- get
