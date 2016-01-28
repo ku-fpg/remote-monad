@@ -15,12 +15,12 @@ Portability: GHC
 
 module Control.Remote.Applicative 
   ( -- * The remote applicative
-    RemoteApplicative
+    RemoteApplicative(..) -- for now
     -- * The primitive lift functions
   , command
   , procedure
     -- * The run functions
-  , ApplicativePacket()
+  , ApplicativePacket'()
   , runApplicative
   , runWeakApplicative
   , runStrongApplicative
@@ -38,57 +38,51 @@ import qualified Control.Remote.Monad.Packet.Weak as Weak
 import           Control.Remote.Monad.Packet.Weak (Weak)
 import           Control.Natural
 
---type RemoteApplicative c p a = A.Applicative c p a
+newtype RemoteApplicative c p a = RemoteApplicative (ApplicativePacket c p a)
 
 instance Functor (RemoteApplicative c p) where
-  fmap f (Command g c)   = Command (fmap f g) c
-  fmap f (Procedure g p) = Procedure (fmap (f .) g) p
-  fmap f (Pure a)        = Pure (f a)
+  fmap f (RemoteApplicative g) = RemoteApplicative (fmap f g)
 
 instance Applicative (RemoteApplicative c p) where
-  pure a = Pure a
-  (Pure f) <*> m = fmap f m
-  (Command g c)   <*> (Pure a)        = Command (fmap (\ f -> f a) g) c
-  (Procedure g p) <*> (Pure a)        = Procedure (fmap (\ f a1 -> f a1 a) g) p
-  m <*> (Command g2 c2)               = Command  (m           <*> g2) c2
-  m <*> (Procedure g2 p2)             = Procedure (fmap (.) m <*> g2) p2
+  pure a = RemoteApplicative (pure a)
+  (RemoteApplicative f) <*> (RemoteApplicative g) = RemoteApplicative (f <*> g)
 
 -- | promote a command into the applicative
 command :: c -> RemoteApplicative c p ()
-command c = Command (pure ()) c
+command c = RemoteApplicative (Command (pure ()) c)
 
 -- | promote a command into the applicative
 procedure :: p a -> RemoteApplicative c p a
-procedure p = Procedure (pure id) p
+procedure p = RemoteApplicative (Procedure (pure id) p)
 
-class ApplicativePacket f where
+class ApplicativePacket' f where
   -- | This overloaded function chooses the best bundling strategy
   --   based on the type of the handler your provide.
   runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
 
-instance ApplicativePacket Weak where
+instance ApplicativePacket' Weak where
   runApplicative = runWeakApplicative
 
-instance ApplicativePacket Strong where
+instance ApplicativePacket' Strong where
   runApplicative = runStrongApplicative
 
-instance ApplicativePacket RemoteApplicative where
+instance ApplicativePacket' ApplicativePacket where
   runApplicative = runApplicativeApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
 runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (RemoteApplicative c p ~> m)
-runWeakApplicative f (Command   g c) = runWeakApplicative f g <*  f (Weak.Command c)
-runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
-runWeakApplicative f (Pure        a) = pure a
+runWeakApplicative f (RemoteApplicative (Command   g c)) = runWeakApplicative f (RemoteApplicative g) <*  f (Weak.Command c)
+runWeakApplicative f (RemoteApplicative (Procedure g p)) = runWeakApplicative f (RemoteApplicative g) <*> f (Weak.Procedure p)
+runWeakApplicative f (RemoteApplicative (Pure        a)) = pure a
 
 -- | The strong remote applicative, that bundles together commands.
 runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteApplicative c p ~> m)
-runStrongApplicative f p = do
+runStrongApplicative f (RemoteApplicative p) = do
     (r,HStrong h) <- runStateT (go p) (HStrong id)
     f $ h $ Strong.Done
     return r
   where
-    go :: forall a . RemoteApplicative c p a -> StateT (HStrong c p) m a
+    go :: forall a . ApplicativePacket c p a -> StateT (HStrong c p) m a
     go (Pure a)        = return a
     go (Command g c)   = do
         r <- go g
@@ -102,5 +96,5 @@ runStrongApplicative f p = do
         return $ r1 r2
 
 -- | The applicative remote applicative, that is the identity function.
-runApplicativeApplicative :: (RemoteApplicative c p ~> m) -> (RemoteApplicative c p ~> m)
-runApplicativeApplicative = id
+runApplicativeApplicative :: (ApplicativePacket c p ~> m) -> (RemoteApplicative c p ~> m)
+runApplicativeApplicative f (RemoteApplicative m) = f m

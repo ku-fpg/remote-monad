@@ -84,7 +84,7 @@ runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Command c) >> runSP tr ref p
 runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
 runSP tr ref SP.Done             = pure ()
 
-runAppP :: IORef [String] -> IORef [A] -> RemoteApplicative C P a -> IO a
+runAppP :: IORef [String] -> IORef [A] -> ApplicativePacket C P a -> IO a
 runAppP tr ref (AP.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Command c)
 runAppP tr ref (AP.Procedure g p) = runAppP tr ref g <*> runWP tr ref (WP.Procedure p)
 runAppP tr ref (AP.Pure a)        = pure a
@@ -102,8 +102,8 @@ instance Arbitrary RemoteMonad where
     [ runWeakMonadWeakPacket
     , runStrongMonadWeakPacket
     , runStrongMonadStrongPacket
-    , runApplicativeMonadWeakPacket
-    , runApplicativeMonadStrongPacket
+--    , runApplicativeMonadWeakPacket
+--    , runApplicativeMonadStrongPacket
     , runApplicativeMonadApplicativePacket
     ]
 
@@ -120,7 +120,7 @@ runStrongMonadWeakPacket = RemoteMonad "StrongMonadWeakPacket"
 runStrongMonadStrongPacket :: RemoteMonad
 runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket" 
   $ \ tr ref -> M.runStrongMonad (runSP tr ref)
-
+{-
 runApplicativeMonadWeakPacket :: RemoteMonad
 runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket" 
   $ \ tr ref -> M.runApplicativeMonad (A.runApplicative (runWP tr ref))
@@ -128,7 +128,7 @@ runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket"
 runApplicativeMonadStrongPacket :: RemoteMonad
 runApplicativeMonadStrongPacket = RemoteMonad "ApplicativeMonadStrongPacket" 
   $ \ tr ref -> M.runApplicativeMonad (A.runApplicative (runSP tr ref))
-
+-}
 runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
   $ \ tr ref -> M.runApplicativeMonad (runAppP tr ref)
