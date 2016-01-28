@@ -36,10 +36,10 @@ description:
     send m = runMonad runWP m
     .
     main = send $ do 
-    &#32;&#32;say "Howdy doodly do"     
-    &#32;&#32;say "How about a muffin?" 
+    &#32;&#32;say &#34;Howdy doodly do&#34;
+    &#32;&#32;say &#34;How about a muffin?&#34;
     &#32;&#32;t <- temperature          
-    &#32;&#32;say (show t ++ "F")       
+    &#32;&#32;say (show t ++ &#34;F&#34;)       
   @
 
 
