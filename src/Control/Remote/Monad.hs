@@ -21,9 +21,9 @@ module Control.Remote.Monad
     -- * The run functions
   , runMonad
   , runWeakMonad
-  , runBindeeMonad
   , runStrongMonad
   , runApplicativeMonad
+  , runMonadSkeleton
   ) where
 
 import Control.Monad.Trans.Class
@@ -83,16 +83,16 @@ instance MonadPacket A.RemoteApplicative where
 --   of a remote applicative, splits the monad into applicatives
 --   without any merge stragegy, and uses the remote applicative.
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
---   handler; hence the name runBindee.
+--   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runBindeeMonad :: (Monad m) => (RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
-runBindeeMonad f (Appl g)   = f g
-runBindeeMonad f (Bind g k) = f g >>= runBindeeMonad f . k
+runMonadSkeleton :: (Monad m) => (RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
+runMonadSkeleton f (Appl g)   = f g
+runMonadSkeleton f (Bind g k) = f g >>= runMonadSkeleton f . k
  
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
 runWeakMonad :: (Monad m) => (Weak c p ~> m) -> (RemoteMonad c p ~> m)
-runWeakMonad f = runBindeeMonad (runWeakApplicative f)
+runWeakMonad f = runMonadSkeleton (runWeakApplicative f)
 
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'Strong') as large as possible,
