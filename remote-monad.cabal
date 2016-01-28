@@ -28,7 +28,7 @@ description:
     temperature :: RemoteMonad Command Procedure Int
     temperature = procedure Temperature
     .
-    runWP ::  WeakPacket Command Procedure a -> IO a 
+    runWP :: WeakPacket Command Procedure a -> IO a 
     runWP (Command (Say s))  = print s  
     runWP (Procedure Temperature) = return 42
     .
