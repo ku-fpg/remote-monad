@@ -16,11 +16,6 @@ Portability: GHC
 module Control.Remote.Monad.Packet.Applicative
   ( -- * The remote applicative
     RemoteApplicative(..)
-    -- * The run functions
-  , ApplicativePacket(runApplicative)
-  , runWeakApplicative
-  , runStrongApplicative
-  , runApplicativeApplicative
     -- * Utility
   , superCommand
   ) where
@@ -40,52 +35,7 @@ import Control.Natural
 data RemoteApplicative (c :: *) (p :: * -> *) (a :: *) where
    Command   :: RemoteApplicative c p b        -> c   -> RemoteApplicative c p b
    Procedure :: RemoteApplicative c p (a -> b) -> p a -> RemoteApplicative c p b
-   Pure      :: a                                     -> RemoteApplicative c p a 
- 
-class ApplicativePacket f where
-  -- | This overloaded function chooses the best bundling strategy
-  --   based on the type of the handler your provide.
-  runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
-
-instance ApplicativePacket Weak where
-  runApplicative = runWeakApplicative
-
-instance ApplicativePacket Strong where
-  runApplicative = runStrongApplicative
-
-instance ApplicativePacket RemoteApplicative where
-  runApplicative = runApplicativeApplicative
-
--- | The weak remote applicative, that sends commands and procedures piecemeal.
-
-runWeakApplicative :: forall m c p . (Applicative m) => (Weak c p ~> m) -> (RemoteApplicative c p ~> m)
-runWeakApplicative f (Command   g c) = runWeakApplicative f g <*  f (Weak.Command c)
-runWeakApplicative f (Procedure g p) = runWeakApplicative f g <*> f (Weak.Procedure p)
-runWeakApplicative f (Pure        a) = pure a
-
--- | The strong remote applicative, that bundles together commands.
-runStrongApplicative :: forall m c p . (Monad m) => (Strong c p ~> m) -> (RemoteApplicative c p ~> m)
-runStrongApplicative f p = do
-    (r,HStrong h) <- runStateT (go p) (HStrong id)
-    f $ h $ Strong.Done
-    return r
-  where
-    go :: forall a . RemoteApplicative c p a -> StateT (HStrong c p) m a
-    go (Pure a)        = return a
-    go (Command g c)   = do
-        r <- go g
-        modify (\ (HStrong cs) -> HStrong (cs . Strong.Command c))
-        return r
-    go (Procedure g p) = do
-        r1 <- go g
-        HStrong cs <- get 
-        put (HStrong id)
-        r2 <- lift $ f $ cs $ Strong.Procedure $ p
-        return $ r1 r2
-
--- | The applicative remote applicative, that is the identity function.
-runApplicativeApplicative :: (RemoteApplicative c p ~> m) -> (RemoteApplicative c p ~> m)
-runApplicativeApplicative = id
+   Pure      :: a                                     -> RemoteApplicative c p a  
 
 -- | This simulates a 'RemoteApplicative', to see if it only contains commands, and if so,
 -- returns the static result. The commands still need executed. The term super-command

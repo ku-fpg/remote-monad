@@ -92,7 +92,7 @@ runMonadSkeleton f (Bind g k) = f g >>= runMonadSkeleton f . k
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
 runWeakMonad :: (Monad m) => (Weak c p ~> m) -> (RemoteMonad c p ~> m)
-runWeakMonad f = runMonadSkeleton (runWeakApplicative f)
+runWeakMonad f = runMonadSkeleton (A.runWeakApplicative f)
 
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'Strong') as large as possible,

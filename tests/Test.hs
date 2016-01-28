@@ -123,11 +123,11 @@ runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket"
 
 runApplicativeMonadWeakPacket :: RemoteMonad
 runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (AP.runApplicative (runWP tr ref))
+  $ \ tr ref -> M.runApplicativeMonad (A.runApplicative (runWP tr ref))
 
 runApplicativeMonadStrongPacket :: RemoteMonad
 runApplicativeMonadStrongPacket = RemoteMonad "ApplicativeMonadStrongPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (AP.runApplicative (runSP tr ref))
+  $ \ tr ref -> M.runApplicativeMonad (A.runApplicative (runSP tr ref))
 
 runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
