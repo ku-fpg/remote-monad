@@ -7,9 +7,9 @@ synopsis:            An parametrizable Remote Monad, and parametrizable Applicat
 description:         An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
 license:             BSD3
 license-file:        LICENSE
-author:              Andy Gill
+author:              Andy Gill, Justin Dawson
 maintainer:          andygill@ku.edu
--- copyright:           
+copyright:           (c) 2016 The University of Kansas
 category:            Control
 build-type:          Simple
 tested-with:         GHC == 7.10.3
