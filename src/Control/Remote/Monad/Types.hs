@@ -32,8 +32,16 @@ instance Functor (RemoteMonad c p) where
 instance Applicative (RemoteMonad c p) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
-  Appl f   <*> Bind m k = Bind (pure (,) <*> f <*> m) (\ (a,b) -> fmap a $ k b)
+  Appl f   <*> Bind m k = Bind (pure (,) <*> f <*> m) (\ (a,b) -> pure a <*> k b)
   Bind m k <*> r        = Bind m (\ a -> k a <*> r)
+
+  Appl f   *> Appl g   = Appl (f *> g)
+  Appl f   *> Bind m k = Bind (f *> m) k
+  Bind m k *> r        = Bind m (\ a -> k a *> r)
+
+  Appl f   <* Appl g   = Appl (f <* g)
+  Appl f   <* Bind m k = Bind (pure (,) <*> f <*> m) (\ (a,b) -> pure a <* k b)
+  Bind m k <* r        = Bind m (\ a -> k a <* r)
 
 instance Monad (RemoteMonad c p) where
   return = pure
