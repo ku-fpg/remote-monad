@@ -22,6 +22,7 @@ module Control.Remote.Monad.Types
 import           Control.Remote.Monad.Packet.Applicative
 import           Control.Natural
 
+-- | 'RemoteMonad' is our monad that can be executed in a remote location.
 data RemoteMonad c p a where
    Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
    Bind        :: RemoteApplicative c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
@@ -50,6 +51,7 @@ instance Monad (RemoteMonad c p) where
   
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
+-- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
 newtype RemoteApplicative c p a = RemoteApplicative (ApplicativePacket c p a)
 
 instance Functor (RemoteApplicative c p) where
