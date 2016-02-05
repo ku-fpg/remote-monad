@@ -80,7 +80,7 @@ test-suite remote-monad-properties
   main-is:             Test.hs
   build-depends:       base                   >= 4.7 && < 5
                      , containers             >= 0.1 && < 0.6
-                     , remote-monad           == 0.1.0.0
+                     , remote-monad           == 0.1.0.1
                      , QuickCheck             == 2.8.*
                      , quickcheck-instances   >= 0.1 && < 0.4
                      , tasty                  >= 0.8 && < 0.12
