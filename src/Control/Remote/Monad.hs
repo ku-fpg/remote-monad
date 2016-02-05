@@ -19,7 +19,7 @@ module Control.Remote.Monad
   , command
   , procedure
     -- * The run functions
-  , runMonad
+  , RunMonad(runMonad)
   , runWeakMonad
   , runStrongMonad
   , runApplicativeMonad
@@ -46,8 +46,9 @@ command = Appl . A.command
 procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure 
 
+-- 'RunMonad' is the overloading for choosing the appropriate bundling strategy for a monad.
 class RunMonad f where
-  -- | This overloaded function chooses the best bundling strategy
+  -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
   runMonad :: (Monad m) => (f c p ~> m) -> (RemoteMonad c p ~> m)
 

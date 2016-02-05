@@ -20,7 +20,7 @@ module Control.Remote.Applicative
   , command
   , procedure
     -- * The run functions
-  , runApplicative
+  , RunApplicative(runApplicative)
   , runWeakApplicative
   , runStrongApplicative
   , runApplicativeApplicative
@@ -46,8 +46,9 @@ command c = RemoteApplicative (Command (pure ()) c)
 procedure :: p a -> RemoteApplicative c p a
 procedure p = RemoteApplicative (Procedure (pure id) p)
 
+-- 'RunApplicative' is the overloading for choosing the appropriate bundling strategy for applicative.
 class RunApplicative f where
-  -- | This overloaded function chooses the best bundling strategy
+  -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
   runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
 

@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                remote-monad
-version:             0.1.0.0
+version:             0.1.0.1
 synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
 description:         
   An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
