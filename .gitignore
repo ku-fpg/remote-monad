@@ -6,3 +6,5 @@ o*#
 cabal.sandbox.config
 cabal.config
 dist/
+TAGS
+tags
