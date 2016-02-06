@@ -46,7 +46,7 @@ command = Appl . A.command
 procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure 
 
--- 'RunMonad' is the overloading for choosing the appropriate bundling strategy for a monad.
+-- | 'RunMonad' is the overloading for choosing the appropriate bundling strategy for a monad.
 class RunMonad f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
