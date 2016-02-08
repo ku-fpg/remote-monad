@@ -13,6 +13,7 @@ description:
     .
     module Main where
     .
+    import Control.Natural (nat, (#))
     import Control.Remote.Monad
     import Control.Remote.Monad.Packet.Weak
     .
