@@ -34,7 +34,7 @@ description:
     runWP (Procedure Temperature) = return 42
     .
     send :: RemoteMonad Command Procedure a -> IO a
-    send m = runMonad (nat runWP) # m
+    send = run $ runMonad $ nat runWP
     .
     main = send $ do 
     &#32;&#32;say &#34;Howdy doodly do&#34;
