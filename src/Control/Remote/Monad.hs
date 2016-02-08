@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
@@ -50,7 +51,7 @@ procedure = Appl . A.procedure
 class RunMonad f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runMonad :: (Monad m) => (f c p ~> m) -> (RemoteMonad c p ~> m)
+  runMonad :: (Monad m) => (f c p :~> m) -> (RemoteMonad c p :~> m)
 
 instance RunMonad WeakPacket where
   runMonad = runWeakMonad
@@ -67,20 +68,21 @@ instance RunMonad ApplicativePacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (Monad m) => (RemoteApplicative c p ~> m) -> (RemoteMonad c p ~> m)
-runMonadSkeleton f (Appl g)   = f g
-runMonadSkeleton f (Bind g k) = f g >>= runMonadSkeleton f . k
+runMonadSkeleton :: (Monad m) => (RemoteApplicative c p :~> m) -> (RemoteMonad c p :~> m)
+runMonadSkeleton f = nat $ \ case 
+  Appl g   -> run f g
+  Bind g k -> run f g >>= \ a -> runMonadSkeleton f # (k a)
  
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
-runWeakMonad :: (Monad m) => (WeakPacket c p ~> m) -> (RemoteMonad c p ~> m)
-runWeakMonad f = runMonadSkeleton (A.runWeakApplicative f)
+runWeakMonad :: (Monad m) => (WeakPacket c p :~> m) -> (RemoteMonad c p :~> m)
+runWeakMonad = runMonadSkeleton . A.runWeakApplicative
 
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'StrongPacket') as large as possible,
 --   including over some monadic binds.
-runStrongMonad :: forall m c p . (Monad m) => (StrongPacket c p ~> m) -> (RemoteMonad c p ~> m)
-runStrongMonad f p = do
+runStrongMonad :: forall m c p . (Monad m) => (StrongPacket c p :~> m) -> (RemoteMonad c p :~> m)
+runStrongMonad (Nat f) = nat $ \ p -> do
     (r,HStrongPacket h) <- runStateT (go2 p) (HStrongPacket id)
     f $ h $ Strong.Done
     return r
@@ -108,8 +110,8 @@ runStrongMonad f p = do
 -- | The is the strong applicative strong remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible, 
 --   including over some monadic binds.
-runApplicativeMonad :: forall m c p . (Monad m) => (A.ApplicativePacket c p ~> m) -> (RemoteMonad c p ~> m)
-runApplicativeMonad f p = do
+runApplicativeMonad :: forall m c p . (Monad m) => (A.ApplicativePacket c p :~> m) -> (RemoteMonad c p :~> m)
+runApplicativeMonad (Nat f) = nat $ \ p -> do
     (r,h) <- runStateT (go2 p) (pure ())
     f $ h
     return r

@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                remote-monad
-version:             0.1.0.1
+version:             0.2
 synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
 description:         
   An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
@@ -62,14 +62,14 @@ library
                        Control.Remote.Monad.Packet.Applicative
                        Control.Remote.Monad.Packet.Strong
                        Control.Remote.Monad.Packet.Weak
-                       Control.Remote.Monad.Packet.Transport
                        Control.Remote.Applicative
                        Control.Remote.Monad
   other-modules:       
+                       Control.Remote.Monad.Packet.Transport
                        Control.Remote.Monad.Types
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
   build-depends:       base >=4.7 && < 5
-                     , natural-transformation >= 0.3 && < 0.4
+                     , natural-transformation >= 0.3.1 && < 0.4
                      , transformers >= 0.4 && < 0.6
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -80,7 +80,8 @@ test-suite remote-monad-properties
   main-is:             Test.hs
   build-depends:       base                   >= 4.7 && < 5
                      , containers             >= 0.1 && < 0.6
-                     , remote-monad           == 0.1.0.1
+                     , natural-transformation >= 0.3.1 && < 0.4
+                     , remote-monad           == 0.2
                      , QuickCheck             == 2.8.*
                      , quickcheck-instances   >= 0.1 && < 0.4
                      , tasty                  >= 0.8 && < 0.12

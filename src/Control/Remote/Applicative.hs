@@ -50,7 +50,7 @@ procedure p = RemoteApplicative (Procedure (pure id) p)
 class RunApplicative f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runApplicative :: (Monad m) => (f c p ~> m) -> (RemoteApplicative c p ~> m)
+  runApplicative :: (Monad m) => (f c p :~> m) -> (RemoteApplicative c p :~> m)
 
 instance RunApplicative WeakPacket where
   runApplicative = runWeakApplicative
@@ -62,14 +62,17 @@ instance RunApplicative ApplicativePacket where
   runApplicative = runApplicativeApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
-runWeakApplicative :: forall m c p . (Applicative m) => (WeakPacket c p ~> m) -> (RemoteApplicative c p ~> m)
-runWeakApplicative f (RemoteApplicative (Command   g c)) = runWeakApplicative f (RemoteApplicative g) <*  f (Weak.Command c)
-runWeakApplicative f (RemoteApplicative (Procedure g p)) = runWeakApplicative f (RemoteApplicative g) <*> f (Weak.Procedure p)
-runWeakApplicative f (RemoteApplicative (Pure        a)) = pure a
+runWeakApplicative :: forall m c p . (Applicative m) => (WeakPacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runWeakApplicative (Nat f) = nat go 
+  where
+    go :: forall a . RemoteApplicative c p a -> m a
+    go (RemoteApplicative (Command   g c)) = go (RemoteApplicative g) <* f (Weak.Command c)
+    go (RemoteApplicative (Procedure g p)) = go (RemoteApplicative g) <*> f (Weak.Procedure p)
+    go (RemoteApplicative (Pure        a)) = pure a
 
 -- | The strong remote applicative, that bundles together commands.
-runStrongApplicative :: forall m c p . (Monad m) => (StrongPacket c p ~> m) -> (RemoteApplicative c p ~> m)
-runStrongApplicative f (RemoteApplicative p) = do
+runStrongApplicative :: forall m c p . (Monad m) => (StrongPacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runStrongApplicative (Nat f) = nat $ \ (RemoteApplicative p) -> do
     (r,HStrongPacket h) <- runStateT (go p) (HStrongPacket id)
     f $ h $ Strong.Done
     return r
@@ -88,5 +91,5 @@ runStrongApplicative f (RemoteApplicative p) = do
         return $ r1 r2
 
 -- | The applicative remote applicative, that is the identity function.
-runApplicativeApplicative :: (ApplicativePacket c p ~> m) -> (RemoteApplicative c p ~> m)
-runApplicativeApplicative f (RemoteApplicative m) = f m
+runApplicativeApplicative :: (ApplicativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runApplicativeApplicative f = nat $ \ (RemoteApplicative m) -> f # m

@@ -26,12 +26,5 @@ data StrongPacket (c :: *) (p :: * -> *) (a :: *) where
    Procedure :: p a                     -> StrongPacket c p a
    Done      ::                            StrongPacket c p ()
 
--- | promote a Weak packet transporter, into a Strong packet transporter.
-runStrongPacket :: (Applicative m) => (WeakPacket c p ~> m) -> (StrongPacket c p ~> m)
-runStrongPacket f (Command c pk) = f (Weak.Command c)   *> runStrongPacket f pk
-runStrongPacket f (Procedure p)  = f (Weak.Procedure p)
-runStrongPacket f Done           = pure ()
-
 -- | A Hughes-style version of 'StrongPacket', with efficent append.
 newtype HStrongPacket c p = HStrongPacket (StrongPacket c p ~> StrongPacket c p)
-

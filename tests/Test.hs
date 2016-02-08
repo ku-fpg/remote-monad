@@ -21,12 +21,13 @@ module Main (main) where
 import Data.Foldable (toList)
 import Data.Sequence (Seq, fromList)
 
+import           Control.Natural (nat,(:~>),(#))
+
 import qualified Control.Remote.Monad as M
 import           Control.Remote.Monad.Packet.Applicative as AP
 import qualified Control.Remote.Monad.Packet.Weak as WP
 import qualified Control.Remote.Monad.Packet.Strong as SP
 import qualified Control.Remote.Applicative as A
-
 
 import Test.QuickCheck 
 import Test.QuickCheck.Instances ()
@@ -92,7 +93,7 @@ runAppP tr ref (AP.Pure a)        = pure a
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
 
-data RemoteMonad = RemoteMonad String (forall a . IORef [String] -> IORef [A] -> M.RemoteMonad C P a -> IO a)
+data RemoteMonad = RemoteMonad String (forall a . IORef [String] -> IORef [A] -> M.RemoteMonad C P :~> IO)
 
 instance Show RemoteMonad where
   show (RemoteMonad msg _) = "Remote Monad: " ++ msg
@@ -100,10 +101,7 @@ instance Show RemoteMonad where
 instance Arbitrary RemoteMonad where
   arbitrary = elements 
     [ runWeakMonadWeakPacket
-    , runStrongMonadWeakPacket
     , runStrongMonadStrongPacket
---    , runApplicativeMonadWeakPacket
---    , runApplicativeMonadStrongPacket
     , runApplicativeMonadApplicativePacket
     ]
 
@@ -111,35 +109,23 @@ instance Arbitrary RemoteMonad where
   
 runWeakMonadWeakPacket :: RemoteMonad
 runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" 
-  $ \ tr ref -> M.runWeakMonad (runWP tr ref)
-
-runStrongMonadWeakPacket :: RemoteMonad
-runStrongMonadWeakPacket = RemoteMonad "StrongMonadWeakPacket" 
-  $ \ tr ref -> M.runStrongMonad (SP.runStrongPacket (runWP tr ref))
+  $ \ tr ref -> M.runWeakMonad (nat $ runWP tr ref)
 
 runStrongMonadStrongPacket :: RemoteMonad
 runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket" 
-  $ \ tr ref -> M.runStrongMonad (runSP tr ref)
-{-
-runApplicativeMonadWeakPacket :: RemoteMonad
-runApplicativeMonadWeakPacket = RemoteMonad "ApplicativeMonadWeakPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (A.runApplicative (runWP tr ref))
+  $ \ tr ref -> M.runStrongMonad (nat $ runSP tr ref)
 
-runApplicativeMonadStrongPacket :: RemoteMonad
-runApplicativeMonadStrongPacket = RemoteMonad "ApplicativeMonadStrongPacket" 
-  $ \ tr ref -> M.runApplicativeMonad (A.runApplicative (runSP tr ref))
--}
 runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
-  $ \ tr ref -> M.runApplicativeMonad (runAppP tr ref)
+  $ \ tr ref -> M.runApplicativeMonad (nat $ runAppP tr ref)
 
 
 ----------------------------------------------------------------
 
-data DeviceM = Device (IORef [String]) (IORef [A]) (forall a . M.RemoteMonad C P a -> IO a)
+data DeviceM = Device (IORef [String]) (IORef [A]) (M.RemoteMonad C P :~> IO)
 
 sendM :: DeviceM -> M.RemoteMonad C P a -> IO a
-sendM (Device _ _ f) = f
+sendM (Device _ _ f) m = f # m
 
 newDevice :: [A] 
           -> RemoteMonad
