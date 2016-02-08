@@ -3,6 +3,7 @@
  
 module Main where
 
+import Control.Natural (nat, (#))
 import Control.Remote.Monad
 import Control.Remote.Monad.Packet.Weak
 
@@ -24,8 +25,9 @@ runWP (Command (Say s))  = print s
 runWP (Procedure Temperature) = return 42
 
 send :: RemoteMonad Command Procedure a -> IO a
-send m =  runMonad runWP m
+send m = runMonad (nat runWP) # m
 
+main :: IO ()
 main = send $ do 
          say "Howdy doodly do"     
          say "How about a muffin?" 
