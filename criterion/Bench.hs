@@ -29,7 +29,7 @@ main = do
   stack <- newIORef []
 
   let bindCount :: Integer
-      bindCount = 1000000000000000^2
+      bindCount = 1000
 
   putStr "bindCount = "
   print bindCount
@@ -56,7 +56,7 @@ pop = M.procedure Pop
 testLeftM :: Integer -> M.RemoteMonad C P Integer
 testLeftM !count
   | count == 0 = pure count
-  | otherwise  = (((push (count-1) >>= const pop) >>= maybePush) >>= const pop) >>= (testLeftM . fromJust)
+  | otherwise  = (((testLeftM (count-1) >>= const (push (count-1))) >>= const pop) >>= maybePush) >>= const (fmap fromJust pop)
 
 testRightM :: Integer -> M.RemoteMonad C P Integer
 testRightM !count
