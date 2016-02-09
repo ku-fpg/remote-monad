@@ -41,6 +41,13 @@ main = do
     , bgroup "right associated monadic binds"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM x) bindCount
         ]
+
+    , bgroup "left associated >>"
+        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ x) bindCount
+        ]
+    , bgroup "right associated >>"
+        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ x) bindCount
+        ]
     ]
 
 push :: Integer -> M.RemoteMonad C P ()
@@ -53,15 +60,28 @@ maybePush _        = pure ()
 pop :: M.RemoteMonad C P (Maybe Integer)
 pop = M.procedure Pop
 
+ignoreArg :: a -> b -> a
+ignoreArg x _ = x
+
 testLeftM :: Integer -> M.RemoteMonad C P Integer
 testLeftM !count
   | count == 0 = pure count
-  | otherwise  = (((testLeftM (count-1) >>= const (push (count-1))) >>= const pop) >>= maybePush) >>= const (fmap fromJust pop)
+  | otherwise  = (((testLeftM (count-1) >>= ignoreArg (push (count-1))) >>= ignoreArg pop) >>= maybePush) >>= ignoreArg (fmap fromJust pop)
 
 testRightM :: Integer -> M.RemoteMonad C P Integer
 testRightM !count
   | count == 0 = pure count
-  | otherwise  = push (count-1) >>= const (pop >>= (\mi -> maybePush mi >>= const (pop >>= testRightM . fromJust)))
+  | otherwise  = push (count-1) >>= ignoreArg (pop >>= (\mi -> maybePush mi >>= ignoreArg (pop >>= testRightM . fromJust)))
+
+testLeftM_ :: Integer -> M.RemoteMonad C P ()
+testLeftM_ !count
+  | count == 0 = pure ()
+  | otherwise  = (((testLeftM_ (count-1) >> push (count-1)) >> pop) >> push (count-1)) >> pop >> pure ()
+
+testRightM_ :: Integer -> M.RemoteMonad C P ()
+testRightM_ !count
+  | count == 0 = pure ()
+  | otherwise  = push (count-1) >> (pop >> (push (count-1)) >> (pop >> testRightM_ (count-1)))
 
 ----------------------------------------------------------------
 -- Basic stack machine, with its interpreter
