@@ -52,6 +52,13 @@ main = do
     , bgroup "right associated >>"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ x) bindCount
         ]
+
+    , bgroup "left associated ma >>= ignoreArg mb"
+        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ignore x) bindCount
+        ]
+    , bgroup "right associated ma >>= ignoreArg mb"
+        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ignore x) bindCount
+        ]
     ]
 
 push :: Integer -> M.RemoteMonad C P ()
@@ -93,6 +100,17 @@ testRightM_ :: Integer -> M.RemoteMonad C P ()
 testRightM_ !count
   | count == 0 = pure ()
   | otherwise  = push (count-1) >> (pop >> (push (count-1)) >> (pop >> testRightM_ (count-1)))
+
+
+testLeftM_ignore :: Integer -> M.RemoteMonad C P ()
+testLeftM_ignore !count
+  | count == 0 = pure ()
+  | otherwise  = (((testLeftM_ (count-1) >>= ignoreArg (push (count-1)) >>= ignoreArg pop)) >>= ignoreArg (push (count-1)) ) >>= ignoreArg pop >>= ignoreArg (pure ())
+
+testRightM_ignore :: Integer -> M.RemoteMonad C P ()
+testRightM_ignore !count
+  | count == 0 = pure ()
+  | otherwise  = push (count-1) >>= ignoreArg (pop >>= ignoreArg (push (count-1)) >>= ignoreArg (pop >>= ignoreArg (testRightM_ (count-1))))
 
 ----------------------------------------------------------------
 -- Basic stack machine, with its interpreter
