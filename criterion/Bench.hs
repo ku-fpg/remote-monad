@@ -42,6 +42,10 @@ main = do
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM x) bindCount
         ]
 
+    , bgroup "balanced monadic binds"
+        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testBalancedM x) bindCount
+        ]
+
     , bgroup "left associated >>"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ x) bindCount
         ]
@@ -72,6 +76,13 @@ testRightM :: Integer -> M.RemoteMonad C P Integer
 testRightM !count
   | count == 0 = pure count
   | otherwise  = push (count-1) >>= ignoreArg (pop >>= (\mi -> maybePush mi >>= ignoreArg (pop >>= testRightM . fromJust)))
+
+testBalancedM :: Integer -> M.RemoteMonad C P Integer
+testBalancedM !count
+  | count <= 1 = pure count
+  | otherwise  = ((testBalancedM halfCount >>= ignoreArg (push halfCount)) >>= ignoreArg pop) >>= (\mi -> maybePush mi >> (pop >>= (testBalancedM . fromJust)))
+  where
+    halfCount = count `div` 2
 
 testLeftM_ :: Integer -> M.RemoteMonad C P ()
 testLeftM_ !count
