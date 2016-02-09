@@ -1,6 +1,7 @@
 *.o
 *.hi
 *~
+*.swp
 o*#
 .cabal-sandbox/
 cabal.sandbox.config
