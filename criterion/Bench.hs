@@ -28,36 +28,40 @@ main :: IO ()
 main = do
   stack <- newIORef []
 
-  let bindCount :: Integer
-      bindCount = 1000
+  let bindCounts :: [Integer]
+      bindCounts = take 4 $ iterate (*2) 100
 
-  putStr "bindCount = "
-  print bindCount
+  putStr "bindCounts = "
+  print bindCounts
 
   defaultMain
     [ bgroup "left associated monadic binds"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM x) bindCount
+        | bindCount <- bindCounts
         ]
     , bgroup "right associated monadic binds"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM x) bindCount
+        | bindCount <- bindCounts
         ]
-
     , bgroup "balanced monadic binds"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testBalancedM x) bindCount
+        | bindCount <- bindCounts
         ]
-
     , bgroup "left associated >>"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ x) bindCount
+        | bindCount <- bindCounts
         ]
     , bgroup "right associated >>"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ x) bindCount
+        | bindCount <- bindCounts
         ]
-
     , bgroup "left associated ma >>= ignoreArg mb"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ignore x) bindCount
+        | bindCount <- bindCounts
         ]
     , bgroup "right associated ma >>= ignoreArg mb"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ignore x) bindCount
+        | bindCount <- bindCounts
         ]
     ]
 
