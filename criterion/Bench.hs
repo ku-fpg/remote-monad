@@ -17,6 +17,8 @@ import System.Environment
 import Data.IORef
 import Data.Maybe (fromJust)
 
+import Debug.Trace
+
 
 fib :: Int -> Int
 fib n
@@ -40,24 +42,25 @@ main2 = do
   stack <- newIORef []
 
   let bindCounts :: [Integer]
-      bindCounts = take 10 [100,200..] -- take 4 $ iterate (*2) 100
+      bindCounts = take 12 [10,20..] -- take 4 $ iterate (*2) 100
 
   putStr "bindCounts = "
   print bindCounts
 
   defaultMain
     [ bgroup "left associated monadic binds"
-        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM x) bindCount
+        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM x) bindCount
         | bindCount <- bindCounts
         ]
     , bgroup "right associated monadic binds"
-        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM x) bindCount
+        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM x) bindCount
         | bindCount <- bindCounts
         ]
     , bgroup "balanced monadic binds"
-        [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testBalancedM x) bindCount
+        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testBalancedM x) bindCount
         | bindCount <- bindCounts
         ]
+{-
     , bgroup "left associated >>"
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ x) bindCount
         | bindCount <- bindCounts
@@ -74,6 +77,7 @@ main2 = do
         [ bench (show bindCount) $ whnf (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ignore x) bindCount
         | bindCount <- bindCounts
         ]
+-}
     ]
 
 push :: Integer -> M.RemoteMonad C P ()
@@ -102,7 +106,7 @@ testRightM !count
 testBalancedM :: Integer -> M.RemoteMonad C P Integer
 testBalancedM !count
   | count <= 1 = pure count
-  | otherwise  = ((testBalancedM halfCount >>= ignoreArg (push halfCount)) >>= ignoreArg pop) >>= (\mi -> maybePush mi >> (pop >>= (testBalancedM . fromJust)))
+  | otherwise  = ((testBalancedM halfCount >>= ignoreArg (push (count - halfCount))) >>= ignoreArg pop) >>= (\mi -> maybePush mi >> (pop >>= (testBalancedM . fromJust)))
   where
     halfCount = count `div` 2
 
