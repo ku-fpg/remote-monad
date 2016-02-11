@@ -13,6 +13,7 @@ import qualified Control.Remote.Monad.Packet.Weak as WP
 import qualified Control.Remote.Monad.Packet.Strong as SP
 import qualified Control.Remote.Applicative as A
 
+import System.Environment
 import Data.IORef
 import Data.Maybe (fromJust)
 
@@ -24,8 +25,18 @@ fib n
 
 
 
+defArgs :: [String]
+defArgs = ["--csv","bench.csv","--output","bench.html"]
+
 main :: IO ()
 main = do
+  args <- getArgs
+  case args of
+    [] -> withArgs defArgs main2
+    other -> main2
+  
+main2 :: IO ()  
+main2 = do
   stack <- newIORef []
 
   let bindCounts :: [Integer]
