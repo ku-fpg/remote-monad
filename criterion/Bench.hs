@@ -153,3 +153,12 @@ runWP ref (WP.Procedure (Pop)) = do
           writeIORef ref xs
           return (Just x)
 
+runSP :: IORef [Integer] -> SP.StrongPacket C P a -> IO a
+runSP ref (SP.Command   c pk) = runWP ref (WP.Command c) >> runSP ref pk
+runSP ref (SP.Procedure p)    = runWP ref (WP.Procedure p)
+runSP ref SP.Done             = pure ()
+
+runAppP :: IORef [Integer] -> ApplicativePacket C P a -> IO a
+runAppP ref (AP.Command   g c) = runAppP ref g <*  runWP ref (WP.Command c)
+runAppP ref (AP.Procedure g p) = runAppP ref g <*> runWP ref (WP.Procedure p)
+runAppP ref (AP.Pure a)        = pure a
