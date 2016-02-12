@@ -19,8 +19,8 @@ module Control.Remote.Monad.Types
   ) where
 
 
-import           Control.Remote.Monad.Packet.Applicative
-import           Control.Natural
+import qualified  Control.Remote.Monad.Packet.Applicative as A
+import            Control.Natural
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
 data RemoteMonad c p a where
@@ -52,11 +52,16 @@ instance Monad (RemoteMonad c p) where
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
-newtype RemoteApplicative c p a = RemoteApplicative (ApplicativePacket c p a)
-
+data RemoteApplicative c p a where 
+   Command   :: c   -> RemoteApplicative c p () 
+   Procedure :: p a -> RemoteApplicative c p a
+   Ap        :: RemoteApplicative c p (a -> b) -> RemoteApplicative c p a -> RemoteApplicative c p b
+   Pure      :: a                                                         -> RemoteApplicative c p a  
+  
 instance Functor (RemoteApplicative c p) where
-  fmap f (RemoteApplicative g) = RemoteApplicative (fmap f g)
+  fmap f g = pure f <*> g
 
 instance Applicative (RemoteApplicative c p) where
-  pure a = RemoteApplicative (pure a)
-  (RemoteApplicative f) <*> (RemoteApplicative g) = RemoteApplicative (f <*> g)
+  pure a = Pure a
+  (<*>) = Ap
+

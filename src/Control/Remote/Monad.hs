@@ -34,7 +34,7 @@ import qualified Control.Remote.Applicative as A
 import           Control.Remote.Monad.Packet.Applicative as A
 import           Control.Remote.Monad.Packet.Weak as Weak
 import           Control.Remote.Monad.Packet.Strong as Strong
-import           Control.Remote.Monad.Types
+import           Control.Remote.Monad.Types as T
 
 import Control.Natural
 
@@ -72,7 +72,7 @@ runMonadSkeleton :: (Monad m) => (RemoteApplicative c p :~> m) -> (RemoteMonad c
 runMonadSkeleton f = nat $ \ case 
   Appl g   -> run f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # (k a)
- 
+
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
 runWeakMonad :: (Monad m) => (WeakPacket c p :~> m) -> (RemoteMonad c p :~> m)
@@ -88,24 +88,20 @@ runStrongMonad (Nat f) = nat $ \ p -> do
     return r
   where
     go2 :: forall a . RemoteMonad c p a -> StateT (HStrongPacket c p) m a
-    go2 (Appl app)   = go' app
+    go2 (Appl app)   = go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
 
-    go' :: forall a . RemoteApplicative c p a -> StateT (HStrongPacket c p) m a
-    go' (RemoteApplicative m) = go m
-
-    go :: forall a . ApplicativePacket c p a -> StateT (HStrongPacket c p) m a
-    go (A.Pure a)        = return a
-    go (A.Command g c)   = do
-        r <- go g
+    go :: forall a . T.RemoteApplicative c p a -> StateT (HStrongPacket c p) m a
+    go (T.Pure a)        = return a
+    go (T.Command c)   = do
         modify (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command c))
-        return r
-    go (A.Procedure g p) = do
-        r1 <- go g
-        HStrongPacket cs <- get 
+        return ()
+    go (T.Procedure p) = do
+        HStrongPacket cs <- get
         put (HStrongPacket id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
-        return $ r1 r2
+        return $ r2
+    go (T.Ap g h) = go g <*> go h
 
 -- | The is the strong applicative strong remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible, 
@@ -117,11 +113,8 @@ runApplicativeMonad (Nat f) = nat $ \ p -> do
     return r
   where
     go2 :: forall a . RemoteMonad c p a -> StateT (A.ApplicativePacket c p ()) m a
-    go2 (Appl app)   = go' app
+    go2 (Appl app)   = go (pk app)
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
-
-    go' :: forall a . RemoteApplicative c p a -> StateT (A.ApplicativePacket c p ()) m a
-    go' (RemoteApplicative m) = go m
 
     go :: forall a . ApplicativePacket c p a -> StateT (A.ApplicativePacket c p ()) m a
     go ap = case A.superCommand ap of
@@ -133,3 +126,8 @@ runApplicativeMonad (Nat f) = nat $ \ p -> do
                   modify (\ ap' -> ap' <* ap)
                   return a
 
+    pk :: T.RemoteApplicative c p a -> ApplicativePacket c p a
+    pk (T.Pure a)      = A.Pure a
+    pk (T.Command   c) = A.Command (A.Pure ()) c
+    pk (T.Procedure p) = A.Procedure (A.Pure id) p
+    pk (T.Ap g h)      = pk g <*> pk h -- <- bad things happen here
