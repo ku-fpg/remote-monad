@@ -25,7 +25,7 @@ import           Control.Natural
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
 data RemoteMonad c p a where
    Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
-   Bind        :: RemoteApplicative c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
+   Bind        :: RemoteMonad c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
   
 instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
@@ -33,21 +33,21 @@ instance Functor (RemoteMonad c p) where
 instance Applicative (RemoteMonad c p) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
-  Appl f   <*> Bind m k = Bind (pure (,) <*> f <*> m) (\ (a,b) -> pure a <*> k b)
+  Appl f   <*> Bind m k = Bind (pure (,) <*> Appl f <*> m) (\ (a,b) -> pure a <*> k b)
   Bind m k <*> r        = Bind m (\ a -> k a <*> r)
 
   Appl f   *> Appl g   = Appl (f *> g)
-  Appl f   *> Bind m k = Bind (f *> m) k
+  Appl f   *> Bind m k = Bind (Appl f *> m) k
   Bind m k *> r        = Bind m (\ a -> k a *> r)
 
   Appl f   <* Appl g   = Appl (f <* g)
-  Appl f   <* Bind m k = Bind (pure (,) <*> f <*> m) (\ (a,b) -> pure a <* k b)
+
+  Appl f   <* Bind m k = Bind (pure (,) <*> Appl f <*> m) (\ (a,b) -> pure a <* k b)
   Bind m k <* r        = Bind m (\ a -> k a <* r)
 
 instance Monad (RemoteMonad c p) where
   return = pure
-  Appl m >>= k    = Bind m k
-  Bind m k >>= k2 = Bind m (\ a -> k a >>= k2)
+  m >>= k    = Bind m k
   
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
