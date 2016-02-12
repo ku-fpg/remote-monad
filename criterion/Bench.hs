@@ -48,34 +48,43 @@ main2 = do
   print bindCounts
 
   defaultMain
-    [ bgroup "left associated monadic binds"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM x) bindCount
-        | bindCount <- bindCounts
+    [ bgroup packetType
+        [ bgroup "left associated monadic binds"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testLeftM x) bindCount
+            | bindCount <- bindCounts
+            ]
+        , bgroup "right associated monadic binds"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM x) bindCount
+            | bindCount <- bindCounts
+            ]
+        , bgroup "balanced monadic binds"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testBalancedM x) bindCount
+            | bindCount <- bindCounts
+            ]
+        , bgroup "left associated >>"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testLeftM_ x) bindCount
+            | bindCount <- bindCounts
+            ]
+        , bgroup "right associated >>"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM_ x) bindCount
+            | bindCount <- bindCounts
+            ]
+{-
+        , bgroup "left associated ma >>= ignoreArg mb"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testLeftM_ignore x) bindCount
+            | bindCount <- bindCounts
+            ]
+        , bgroup "right associated ma >>= ignoreArg mb"
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM_ignore x) bindCount
+            | bindCount <- bindCounts
+            ]
+-}
         ]
-    , bgroup "right associated monadic binds"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM x) bindCount
-        | bindCount <- bindCounts
-        ]
-    , bgroup "balanced monadic binds"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testBalancedM x) bindCount
-        | bindCount <- bindCounts
-        ]
-    , bgroup "left associated >>"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ x) bindCount
-        | bindCount <- bindCounts
-        ]
-    , bgroup "right associated >>"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ x) bindCount
-        | bindCount <- bindCounts
-        ]
-    , bgroup "left associated ma >>= ignoreArg mb"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testLeftM_ignore x) bindCount
-        | bindCount <- bindCounts
-        ]
-    , bgroup "right associated ma >>= ignoreArg mb"
-        [ bench (show bindCount) $ whnfIO $ (\x -> run (M.runMonad (nat $ runWP stack)) $ testRightM_ignore x) bindCount
-        | bindCount <- bindCounts
-        ]
+    | (packetType,sender) <- 
+           [("weak",   M.runMonad (nat $ runWP   stack))
+           ,("strong", M.runMonad (nat $ runSP   stack))
+           ,("app",    M.runMonad (nat $ runAppP stack))
+           ]
     ]
 
 push :: Integer -> M.RemoteMonad C P ()
