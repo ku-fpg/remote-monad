@@ -42,7 +42,7 @@ main2 = do
   stack <- newIORef []
 
   let bindCounts :: [Integer]
-      bindCounts = take 11 [0,100..] -- take 4 $ iterate (*2) 100
+      bindCounts = take 6 [0,200..] -- take 4 $ iterate (*2) 100
 
   putStr "bindCounts = "
   print bindCounts
