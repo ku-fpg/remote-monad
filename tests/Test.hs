@@ -86,9 +86,10 @@ runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
 runSP tr ref SP.Done             = pure ()
 
 runAppP :: IORef [String] -> IORef [A] -> ApplicativePacket C P a -> IO a
-runAppP tr ref (AP.Command   g c) = runAppP tr ref g <*  runWP tr ref (WP.Command c)
-runAppP tr ref (AP.Procedure g p) = runAppP tr ref g <*> runWP tr ref (WP.Procedure p)
-runAppP tr ref (AP.Pure a)        = pure a
+runAppP tr ref (AP.Command   c) = runWP tr ref (WP.Command c)
+runAppP tr ref (AP.Procedure p) = runWP tr ref (WP.Procedure p)
+runAppP tr ref (AP.Pure a)      = pure a
+runAppP tr ref (AP.Zip f g h)   = f <$> runAppP tr ref g <*> runAppP tr ref h
 
 ----------------------------------------------------------------
 -- The different ways of running remote monads.

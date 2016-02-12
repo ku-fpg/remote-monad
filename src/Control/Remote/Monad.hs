@@ -109,25 +109,34 @@ runStrongMonad (Nat f) = nat $ \ p -> do
 runApplicativeMonad :: forall m c p . (Monad m) => (A.ApplicativePacket c p :~> m) -> (RemoteMonad c p :~> m)
 runApplicativeMonad (Nat f) = nat $ \ p -> do
     (r,h) <- runStateT (go2 p) (pure ())
-    f $ h
+    f $ pk $ h -- should we stub out the call with only 'Pure'?
     return r
   where
-    go2 :: forall a . RemoteMonad c p a -> StateT (A.ApplicativePacket c p ()) m a
-    go2 (Appl app)   = go (pk app)
+    go2 :: forall a . RemoteMonad c p a -> StateT (T.RemoteApplicative c p ()) m a
+    go2 (Appl app)   = go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
 
-    go :: forall a . ApplicativePacket c p a -> StateT (A.ApplicativePacket c p ()) m a
-    go ap = case A.superCommand ap of
+    go :: forall a .  T.RemoteApplicative c p a -> StateT (T.RemoteApplicative c p ()) m a
+    go ap = case superApplicative ap of
                 Nothing -> do
                   ap' <- get
                   put (pure ())
-                  lift $ f $ (ap' *>  ap)
+                  lift $ f $ (pk (ap' *> ap))
                 Just a -> do
                   modify (\ ap' -> ap' <* ap)
                   return a
 
+    superApplicative :: T.RemoteApplicative c p a -> Maybe a
+    superApplicative (T.Pure a)      = pure a
+    superApplicative (T.Command   c) = Just ()
+    superApplicative (T.Procedure p) = Nothing
+    superApplicative (T.Ap g h)      = superApplicative g <*> superApplicative h
+
+
+    -- It all comes down to this. Converting quickly between T.RemoteApplicative and ApplicativePacket.
+    
     pk :: T.RemoteApplicative c p a -> ApplicativePacket c p a
     pk (T.Pure a)      = A.Pure a
-    pk (T.Command   c) = A.Command (A.Pure ()) c
-    pk (T.Procedure p) = A.Procedure (A.Pure id) p
-    pk (T.Ap g h)      = pk g <*> pk h -- <- bad things happen here
+    pk (T.Command   c) = A.Command c
+    pk (T.Procedure p) = A.Procedure p
+    pk (T.Ap g h)      = A.Zip ($) (pk g) (pk h)

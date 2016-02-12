@@ -95,6 +95,6 @@ runApplicativeApplicative (Nat f) = nat $ f . go
   where
     go :: T.RemoteApplicative c p a -> ApplicativePacket c p a
     go (T.Pure a)      = A.Pure a
-    go (T.Command   c) = A.Command (A.Pure ()) c
-    go (T.Procedure p) = A.Procedure (A.Pure id) p
-    go (T.Ap g h)      = go g <*> go h -- <- bad things happen here
+    go (T.Command   c) = A.Command  c
+    go (T.Procedure p) = A.Procedure p
+    go (T.Ap g h)      = A.Zip ($) (go g) (go h)
