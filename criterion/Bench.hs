@@ -122,12 +122,12 @@ testRightM_ !count
 testLeftM_ignore :: Integer -> M.RemoteMonad C P ()
 testLeftM_ignore !count
   | count == 0 = pure ()
-  | otherwise  = (((testLeftM_ (count-1) >>= ignoreArg (push (count-1)) >>= ignoreArg pop)) >>= ignoreArg (push (count-1)) ) >>= ignoreArg pop >>= ignoreArg (pure ())
+  | otherwise  = (((testLeftM_ignore (count-1) >>= ignoreArg (push (count-1)) >>= ignoreArg pop)) >>= ignoreArg (push (count-1)) ) >>= ignoreArg pop >>= ignoreArg (pure ())
 
 testRightM_ignore :: Integer -> M.RemoteMonad C P ()
 testRightM_ignore !count
   | count == 0 = pure ()
-  | otherwise  = push (count-1) >>= ignoreArg (pop >>= ignoreArg (push (count-1)) >>= ignoreArg (pop >>= ignoreArg (testRightM_ (count-1))))
+  | otherwise  = push (count-1) >>= ignoreArg (pop >>= ignoreArg (push (count-1)) >>= ignoreArg (pop >>= ignoreArg (testRightM_ignore (count-1))))
 
 ----------------------------------------------------------------
 -- Basic stack machine, with its interpreter
