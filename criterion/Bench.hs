@@ -17,6 +17,8 @@ import System.Environment
 import Data.IORef
 import Data.Maybe (fromJust)
 
+import Control.Monad
+
 import Debug.Trace
 
 
@@ -55,6 +57,10 @@ main2 = do
             ]
         , bgroup "right associated monadic binds"
             [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM x) bindCount
+            | bindCount <- bindCounts
+            ]
+        , bgroup "<*> with >>="
+            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightBindAndApp x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "balanced monadic binds"
@@ -137,6 +143,12 @@ testRightM_ignore :: Integer -> M.RemoteMonad C P ()
 testRightM_ignore !count
   | count == 0 = pure ()
   | otherwise  = push (count-1) >>= ignoreArg (pop >>= ignoreArg (push (count-1)) >>= ignoreArg (pop >>= ignoreArg (testRightM_ignore (count-1))))
+
+testRightBindAndApp :: Integer -> M.RemoteMonad C P Integer
+testRightBindAndApp !count
+  | count == 0 = pure count
+  | otherwise  =
+      pure pred <*> (push (count-1) >>= ignoreArg pop >>= testRightBindAndApp . fromJust)
 
 ----------------------------------------------------------------
 -- Basic stack machine, with its interpreter
