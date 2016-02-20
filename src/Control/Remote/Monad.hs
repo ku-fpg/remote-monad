@@ -72,6 +72,7 @@ runMonadSkeleton :: (Monad m) => (RemoteApplicative c p :~> m) -> (RemoteMonad c
 runMonadSkeleton f = nat $ \ case 
   Appl g   -> run f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # (k a)
+  Ap' g h  -> (runMonadSkeleton f # g) <*> (runMonadSkeleton f # h)
 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
@@ -90,6 +91,7 @@ runStrongMonad (Nat f) = nat $ \ p -> do
     go2 :: forall a . RemoteMonad c p a -> StateT (HStrongPacket c p) m a
     go2 (Appl app)   = go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
+    go2 (Ap' g h)    = go2 g <*> go2 h
 
     go :: forall a . T.RemoteApplicative c p a -> StateT (HStrongPacket c p) m a
     go (T.Pure a)        = return a
@@ -115,6 +117,7 @@ runApplicativeMonad (Nat f) = nat $ \ p -> do
     go2 :: forall a . RemoteMonad c p a -> StateT (T.RemoteApplicative c p ()) m a
     go2 (Appl app)   = go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
+    go2 (Ap' g h)    = go2 g <*> go2 h
 
     go :: forall a .  T.RemoteApplicative c p a -> StateT (T.RemoteApplicative c p ()) m a
     go ap = case superApplicative ap of

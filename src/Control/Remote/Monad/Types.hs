@@ -26,6 +26,7 @@ import            Control.Natural
 data RemoteMonad c p a where
    Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
    Bind        :: RemoteMonad c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
+   Ap'         :: RemoteMonad c p (a -> b) -> RemoteMonad c p a -> RemoteMonad c p b
   
 instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
@@ -33,9 +34,8 @@ instance Functor (RemoteMonad c p) where
 instance Applicative (RemoteMonad c p) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
-  Appl f   <*> Bind m k = Bind (pure (,) <*> Appl f <*> m) (\ (a,b) -> pure a <*> k b)
-  Bind m k <*> r        = Bind m (\ a -> k a <*> r)
-
+  Appl f   <*> Bind m k = Ap' (Appl f) (Bind m k)
+{-
   Appl f   *> Appl g   = Appl (f *> g)
   Appl f   *> Bind m k = Bind (Appl f *> m) k
   Bind m k *> r        = Bind m (\ a -> k a *> r)
@@ -44,6 +44,7 @@ instance Applicative (RemoteMonad c p) where
 
   Appl f   <* Bind m k = Bind (pure (,) <*> Appl f <*> m) (\ (a,b) -> pure a <* k b)
   Bind m k <* r        = Bind m (\ a -> k a <* r)
+-}
 
 instance Monad (RemoteMonad c p) where
   return = pure
