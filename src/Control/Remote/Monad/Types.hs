@@ -19,7 +19,6 @@ module Control.Remote.Monad.Types
   ) where
 
 
-import qualified  Control.Remote.Monad.Packet.Applicative as A
 import            Control.Natural
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
