@@ -35,13 +35,13 @@ import Control.Natural
 data AlternativePacket (c :: *) (p :: * -> *) (a :: *) where
    Command   :: c                           -> AlternativePacket c p ()
    Procedure :: p a                         -> AlternativePacket c p a
-   Alt       :: AlternativePacket c p a
-             -> AlternativePacket c p a     -> AlternativePacket c p a
-   Empty     ::                                AlternativePacket c p a
    Zip       :: (x -> y -> z)
              -> AlternativePacket c p x 
              -> AlternativePacket c p y     -> AlternativePacket c p z
    Pure      :: a                           -> AlternativePacket c p a  
+   Alt       :: AlternativePacket c p a
+             -> AlternativePacket c p a     -> AlternativePacket c p a
+   Empty     ::                                AlternativePacket c p a
 
 instance Functor (AlternativePacket c p) where
   fmap f g = pure f <*> g
