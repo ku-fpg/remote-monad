@@ -25,6 +25,9 @@ module Control.Remote.Monad
   , runStrongMonad
   , runApplicativeMonad
   , runMonadSkeleton
+  , Promote(promoteTo)
+  , promoteToStrong
+  , promoteToApplicative 
   ) where
 
 import Control.Monad.Trans.Class
@@ -143,3 +146,33 @@ runApplicativeMonad (Nat f) = nat $ \ p -> do
     pk (T.Command   c) = A.Command c
     pk (T.Procedure p) = A.Procedure p
     pk (T.Ap g h)      = A.Zip ($) (pk g) (pk h)
+
+
+
+class Promote f where
+    promoteTo :: (Applicative m) => (Weak.WeakPacket c p :~> m) -> (f c p :~> m)
+
+instance Promote A.ApplicativePacket where
+   promoteTo f =  promoteToApplicative f
+
+instance Promote Strong.StrongPacket where
+   promoteTo f = promoteToStrong f
+
+promoteToApplicative :: forall c p m . (Applicative m) => (Weak.WeakPacket c p :~> m) -> (A.ApplicativePacket c p :~> m)
+promoteToApplicative (Nat f) =  Nat $ applicativeFunc
+                    where
+                        applicativeFunc :: (Applicative m) => (A.ApplicativePacket c p a -> m a)
+                        applicativeFunc (A.Command c) =  f (Weak.Command c)
+                        applicativeFunc (A.Procedure p) = f (Weak.Procedure p)
+                        applicativeFunc (A.Zip f1 a b) =  f1 <$> applicativeFunc a <*> applicativeFunc b
+                        applicativeFunc (A.Pure a) = pure a
+
+
+promoteToStrong :: forall c p m . (Applicative m) => (Weak.WeakPacket c p :~> m) -> (Strong.StrongPacket c p :~> m)
+promoteToStrong (Nat f) = Nat $ strongFunc
+                       where 
+                           strongFunc :: (Applicative m) => (Strong.StrongPacket c p a -> m a)
+                           strongFunc (Strong.Command c cmds) = f (Weak.Command c) *> strongFunc cmds
+                           strongFunc (Strong.Procedure p)    = f (Weak.Procedure p)
+                           strongFunc (Strong.Done)           = pure ()
+
