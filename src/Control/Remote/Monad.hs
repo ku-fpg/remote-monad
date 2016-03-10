@@ -25,7 +25,7 @@ module Control.Remote.Monad
   , runStrongMonad
   , runApplicativeMonad
   , runMonadSkeleton
-  , Promote(promoteTo)
+  , Promote(promote)
   , promoteToStrong
   , promoteToApplicative 
   ) where
@@ -150,13 +150,13 @@ runApplicativeMonad (Nat f) = nat $ \ p -> do
 
 
 class Promote f where
-    promoteTo :: (Applicative m) => (Weak.WeakPacket c p :~> m) -> (f c p :~> m)
+    promote :: (Applicative m) => (Weak.WeakPacket c p :~> m) -> (f c p :~> m)
 
 instance Promote A.ApplicativePacket where
-   promoteTo f =  promoteToApplicative f
+   promote f =  promoteToApplicative f
 
 instance Promote Strong.StrongPacket where
-   promoteTo f = promoteToStrong f
+   promote f = promoteToStrong f
 
 promoteToApplicative :: forall c p m . (Applicative m) => (Weak.WeakPacket c p :~> m) -> (A.ApplicativePacket c p :~> m)
 promoteToApplicative (Nat f) =  Nat $ applicativeFunc
