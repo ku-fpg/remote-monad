@@ -63,6 +63,7 @@ library
                        Control.Remote.Monad.Packet.Applicative
                        Control.Remote.Monad.Packet.Strong
                        Control.Remote.Monad.Packet.Weak
+                       Control.Remote.Monad.Packet
                        Control.Remote.Applicative
                        Control.Remote.Monad
   other-modules:       
