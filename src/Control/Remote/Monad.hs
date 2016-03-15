@@ -19,6 +19,7 @@ module Control.Remote.Monad
     -- * The primitive lift functions
   , command
   , procedure
+  , loop
     -- * The run functions
   , RunMonad(runMonad)
   , runWeakMonad
@@ -46,6 +47,13 @@ command = Appl . A.command
 -- | promote a procedure into the remote monad
 procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure 
+
+loop :: forall a c p . (a-> Bool) -> RemoteMonad c p a -> RemoteMonad c p a
+loop f m = do  res <- m
+               if f res then
+                 loop f m
+                else
+                  return res 
 
 -- | 'RunMonad' is the overloading for choosing the appropriate bundling strategy for a monad.
 class RunMonad f where
