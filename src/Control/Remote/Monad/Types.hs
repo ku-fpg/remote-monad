@@ -20,12 +20,14 @@ module Control.Remote.Monad.Types
 
 
 import            Control.Natural
+import            Control.Monad.Catch
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
 data RemoteMonad c p a where
    Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
    Bind        :: RemoteMonad c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
    Ap'         :: RemoteMonad c p (a -> b) -> RemoteMonad c p a -> RemoteMonad c p b
+   Fail        :: RemoteMonad c p a
   
 instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
@@ -49,8 +51,11 @@ instance Applicative (RemoteMonad c p) where
 instance Monad (RemoteMonad c p) where
   return = pure
   m >>= k    = Bind m k
-  
+  Fail >> m2 = Fail
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
+
+instance MonadThrow (RemoteMonad c p) where
+    throwM _ = Fail
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
 data RemoteApplicative c p a where 
