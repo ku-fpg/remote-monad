@@ -1,9 +1,10 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TypeOperators #-}
  
 module Main where
 
-import Control.Natural (nat, run)
+import Control.Natural 
 import Control.Remote.Monad
 import Control.Remote.Monad.Packet.Weak as WP
 import Control.Remote.Monad.Packet.Strong as SP
@@ -63,56 +64,39 @@ sendApp = run $ runMonad $ nat runAP
 
 main :: IO ()
 main = do
-     putStrLn "Weak Packet"
-     sendWeak  test
-     sendWeak  testBind
-     sendWeak  testAlt 
-     sendWeak  testAltException
-           `catch` (\e -> case e ::RemoteMonadException of
-                                 RemoteEmptyException -> putStrLn "Empty Exception Thrown"
-                                 _                     -> throw e
-                   )
-     (sendWeak $ do say "hi" >> throwM DivideByZero)
-           `catch` (\e -> case e :: ArithException of
-                              DivideByZero -> putStrLn "Should have sent \"hi\", then given this exception"
-                              _            -> throw e
-                   )
+        putStrLn "WeakSend\n"
+        runTest $ nat sendWeak
+        putStrLn "\nStrongSend\n"
+        runTest $ nat sendStrong
+        putStrLn "\nAppSend\n"
+        runTest $ nat sendApp
 
-     putStrLn "\nStrongPacket"
-     sendStrong  test
-     sendStrong  testBind
-     sendStrong  testAlt 
-     sendStrong  testAltException
-           `catch` (\e -> case e ::RemoteMonadException of
-                                 RemoteEmptyException -> putStrLn "Empty Exception Thrown"
-                                 _                     -> throw e
-                   )
-     (sendStrong $ do say "hi" >> throwM DivideByZero)
-           `catch` (\e -> case e :: ArithException of
-                         DivideByZero -> putStrLn "Should have sent \"hi\", then given this exception"
-                         _            -> throw e
-                   )
-     putStrLn "\nApplicativePacket"
-     sendApp  test
-     sendApp  testBind
-     sendApp  testAlt 
-     sendApp  testAltException
-           `catch` (\e -> case e ::RemoteMonadException of
-                                 RemoteEmptyException -> putStrLn "Empty Exception Thrown"
-                                 _                     -> throw e
-                   )
-     (sendApp $ do say "hi" >> throwM DivideByZero)
-           `catch` (\e -> case e :: ArithException of
-                         DivideByZero -> putStrLn "Should have sent \"hi\", then given this exception"
-                         _            -> throw e
-                   )
-      
-     sendApp (do  r <- (+) <$> temperature <*> throwM Underflow
-                  say (show r))
-        `catch` (\e -> case e :: ArithException of
-                              Underflow -> putStrLn "Should have sent temp, then given this exception"
-                              _            -> throw e
-                )
+
+runTest :: (RemoteMonad Command Procedure :~> IO)-> IO()
+runTest (Nat f) = do 
+               f test
+               f testBind
+               f testAlt
+               (f  testAltException)
+                 `catch` (\e -> case e ::RemoteMonadException of
+                                       RemoteEmptyException -> putStrLn "Empty Exception Thrown"
+                                       _                     -> throw e
+                         )
+               (f $ testThrowM)
+                 `catch` (\e -> case e :: ArithException of
+                                  DivideByZero -> putStrLn "Should have sent \"hi\", then given this exception"
+                                  _            -> throw e
+                         )
+               
+               (f $ testThrowM2)
+                  `catch` (\e -> case e :: ArithException of
+                                  Underflow -> putStrLn "Should have sent temp, then given this exception"
+                                  _            -> throw e
+                          )
+               
+               f testCatch
+               f testCatch2
+           
 
 test :: RemoteMonad Command Procedure ()
 test = do
@@ -142,4 +126,32 @@ testAltException = do
        <|> (do say "nine"; empty; say "AHAHA") 
 
 
+testThrowM :: RemoteMonad Command Procedure ()
+testThrowM = say "hi" >> throwM DivideByZero
 
+testThrowM2 :: RemoteMonad Command Procedure ()
+testThrowM2 = do  
+    r <- (+) <$> temperature <*> throwM Underflow
+    say (show r)
+
+
+
+testCatch :: RemoteMonad Command Procedure ()
+testCatch = do (say "going to throw" >> throwM DivideByZero) 
+                   `catch` (\e -> case e :: ArithException of
+                                    DivideByZero -> say "Divided by Zero"
+                                    _            -> say "Oops!"
+                           )
+
+testCatch2 :: RemoteMonad Command Procedure ()
+testCatch2 =do
+     r <- (do temperature >>= \a -> if a /= 42 then return a else (say "HA" >> empty)) <|> pure 32
+        `catch` (\e -> case e :: RemoteMonadException of
+                          RemoteEmptyException -> do
+                                                  say "Caught Exception in Send"
+                                                  temperature
+                          _                    -> do say "Oops!"
+                                                     return (-1)
+                )                                    
+     say (show r)                                    
+ 

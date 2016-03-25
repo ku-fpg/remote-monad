@@ -91,6 +91,7 @@ runMonadSkeleton f = nat $ \ case
                          )
   Empty     -> throwM RemoteEmptyException
   Throw e   -> throwM e 
+  Catch m h -> catch (runMonadSkeleton f # m)  ((runMonadSkeleton f #) . h)
 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
@@ -119,6 +120,7 @@ runStrongMonad (Nat f) = nat $ \ p -> do
         put (HStrongPacket id) 
         () <- lift $ f $ cs Strong.Done
         throwM e 
+    go2 (Catch m h) = catch (go2 m) (go2 . h)
 
     go :: forall a . T.RemoteApplicative c p a -> StateT (HStrongPacket c p) m a
     go (T.Pure a)      = return a
@@ -154,6 +156,7 @@ runApplicativeMonad (Nat f) = nat $ \ p -> do
         put (pure ())
         ()<-lift $ f $ (pk ap')
         throwM e
+    go2 (Catch m h) = catch (go2 m) (go2 . h)
 
          
 
