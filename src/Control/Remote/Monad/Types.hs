@@ -16,18 +16,22 @@ Portability: GHC
 module Control.Remote.Monad.Types 
   ( RemoteMonad(..)
   , RemoteApplicative(..)
+  , RemoteMonadException(..)
   ) where
 
 
 import            Control.Natural
 import            Control.Monad.Catch
+import            Control.Applicative
+import            Data.Typeable
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
 data RemoteMonad c p a where
    Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
    Bind        :: RemoteMonad c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
    Ap'         :: RemoteMonad c p (a -> b) -> RemoteMonad c p a -> RemoteMonad c p b
-   Fail        :: RemoteMonad c p a
+   Alt         :: RemoteMonad c p a -> RemoteMonad c p a -> RemoteMonad c p a
+   Empty       :: RemoteMonad c p a 
   
 instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
@@ -51,11 +55,16 @@ instance Applicative (RemoteMonad c p) where
 instance Monad (RemoteMonad c p) where
   return = pure
   m >>= k    = Bind m k
-  Fail >> m2 = Fail
+  Empty >> m2 = Empty
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
 instance MonadThrow (RemoteMonad c p) where
-    throwM _ = Fail
+    throwM _ = Empty
+
+instance Alternative (RemoteMonad c p) where
+    empty = Empty
+    Empty <|> p = p
+    m1 <|> m2 = Alt m1 m2
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
 data RemoteApplicative c p a where 
@@ -71,3 +80,18 @@ instance Applicative (RemoteApplicative c p) where
   pure a = Pure a
   (<*>) = Ap
 
+data RemoteMonadException = RemoteEmptyException
+   deriving (Show, Typeable)                             
+                                                         
+instance Exception RemoteMonadException                 
+                                                         
+{-                                                         
+instance Binary RemoteBinaryException where              
+    put (RemoteBinaryException s) = do put (220:: Word8) 
+                                       put s             
+                                                         
+    get = do i <-get                                     
+             case i :: Word8 of                          
+               220 -> do s <- get                        
+                         return $ RemoteBinaryException s
+-}
