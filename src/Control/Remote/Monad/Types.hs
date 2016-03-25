@@ -32,6 +32,8 @@ data RemoteMonad c p a where
    Ap'         :: RemoteMonad c p (a -> b) -> RemoteMonad c p a -> RemoteMonad c p b
    Alt         :: RemoteMonad c p a -> RemoteMonad c p a -> RemoteMonad c p a
    Empty       :: RemoteMonad c p a 
+   Throw       :: Exception e => e -> RemoteMonad c p a
+   Catch       :: Exception e => RemoteMonad c p a -> (e -> RemoteMonad c p a)-> RemoteMonad c p a
   
 instance Functor (RemoteMonad c p) where
   fmap f m = pure f <*> m
@@ -59,7 +61,11 @@ instance Monad (RemoteMonad c p) where
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
 instance MonadThrow (RemoteMonad c p) where
-    throwM _ = Empty
+    throwM e = Throw e
+
+instance MonadCatch (RemoteMonad c p) where
+    catch m f = Catch m f
+
 
 instance Alternative (RemoteMonad c p) where
     empty = Empty

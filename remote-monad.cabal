@@ -82,6 +82,7 @@ test-suite remote-monad-example
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   build-depends:       base                   >= 4.7 && < 5
+                     , exceptions             >= 0.8 && < 0.9
                      , natural-transformation >= 0.3.1 && < 0.4
                      , remote-monad           == 0.3
   hs-source-dirs:      examples
