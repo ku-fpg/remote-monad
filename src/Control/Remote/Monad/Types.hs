@@ -30,8 +30,8 @@ data RemoteMonad c p a where
    Appl        :: RemoteApplicative c p a -> RemoteMonad c p a
    Bind        :: RemoteMonad c p a -> (a -> RemoteMonad c p b) -> RemoteMonad c p b
    Ap'         :: RemoteMonad c p (a -> b) -> RemoteMonad c p a -> RemoteMonad c p b
-   Alt         :: RemoteMonad c p a -> RemoteMonad c p a -> RemoteMonad c p a
-   Empty       :: RemoteMonad c p a 
+   Alt'        :: RemoteMonad c p a -> RemoteMonad c p a -> RemoteMonad c p a
+   Empty'       :: RemoteMonad c p a 
    Throw       :: Exception e => e -> RemoteMonad c p a
    Catch       :: Exception e => RemoteMonad c p a -> (e -> RemoteMonad c p a)-> RemoteMonad c p a
   
@@ -57,7 +57,7 @@ instance Applicative (RemoteMonad c p) where
 instance Monad (RemoteMonad c p) where
   return = pure
   m >>= k    = Bind m k
-  Empty >> m2 = Empty
+  Empty' >> m2 = Empty'
   m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
 
 instance MonadThrow (RemoteMonad c p) where
@@ -68,16 +68,19 @@ instance MonadCatch (RemoteMonad c p) where
 
 
 instance Alternative (RemoteMonad c p) where
-    empty = Empty
-    Empty <|> p = p
-    m1 <|> m2 = Alt m1 m2
+    empty        = Empty'
+    Empty' <|> p = p
+    Appl g <|> Appl h = Appl (g <|> h)
+    m1 <|> m2    = Alt' m1 m2
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
 data RemoteApplicative c p a where 
    Command   :: c   -> RemoteApplicative c p () 
    Procedure :: p a -> RemoteApplicative c p a
    Ap        :: RemoteApplicative c p (a -> b) -> RemoteApplicative c p a -> RemoteApplicative c p b
+   Alt       :: RemoteApplicative c p a -> RemoteApplicative c p a -> RemoteApplicative c p a
    Pure      :: a                                                         -> RemoteApplicative c p a  
+   Empty     :: RemoteApplicative c p a
   
 instance Functor (RemoteApplicative c p) where
   fmap f g = pure f <*> g
@@ -86,18 +89,20 @@ instance Applicative (RemoteApplicative c p) where
   pure a = Pure a
   (<*>) = Ap
 
+instance Alternative (RemoteApplicative c p) where
+   empty       = Empty
+   Empty <|> p = p
+   m1 <|> m2   = Alt m1 m2
 data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
                                                          
 instance Exception RemoteMonadException                 
                                                          
 {-                                                         
-instance Binary RemoteBinaryException where              
-    put (RemoteBinaryException s) = do put (220:: Word8) 
-                                       put s             
+instance Binary RemoteMonadException where              
+    put (RemoteEmptyException s) = do put (219:: Word8) 
                                                          
     get = do i <-get                                     
              case i :: Word8 of                          
-               220 -> do s <- get                        
-                         return $ RemoteBinaryException s
+               219 -> return $ RemoteEmptyException 
 -}
