@@ -79,7 +79,13 @@ instance MonadTrans (RemoteT c p) where
 
 mapRemoteT :: (forall a . f a -> g a) -> RemoteT c p f a -> RemoteT c p g a
 mapRemoteT f (Appl app) = Appl (mapRemoteApplicativeT f app)
-mapRemoteT f _ = error "TODO"
+mapRemoteT f (Bind m k) = Bind (mapRemoteT f m) (\ a -> mapRemoteT f (k a))
+mapRemoteT f (Ap' g h ) = Ap' (mapRemoteT f g) (mapRemoteT f h) 
+mapRemoteT f (Alt g h)  = Alt (mapRemoteT f g) (mapRemoteT f h) 
+mapRemoteT _ (Empty)    = Empty
+mapRemoteT _ (Throw e)  = Throw e
+mapRemoteT f (Catch m handler) =  Catch (mapRemoteT f m) (\e -> mapRemoteT f (handler e))
+
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
 data RemoteApplicativeT c p m a where 
@@ -100,11 +106,11 @@ instance MonadTrans (RemoteApplicativeT c p) where
     lift m = Local m
 
 mapRemoteApplicativeT :: (forall a . f a -> g a) -> RemoteApplicativeT c p f a -> RemoteApplicativeT c p g a
-mapRemoteApplicativeT f (Command c)   = Command c
-mapRemoteApplicativeT f (Procedure p) = Procedure p
+mapRemoteApplicativeT _ (Command c)   = Command c
+mapRemoteApplicativeT _ (Procedure p) = Procedure p
 mapRemoteApplicativeT f (Local m)     = Local (f m)
 mapRemoteApplicativeT f (Ap g h)      = Ap (mapRemoteApplicativeT f g) (mapRemoteApplicativeT f h)
-mapRemoteApplicativeT f (Pure a)      = Pure a
+mapRemoteApplicativeT _ (Pure a)      = Pure a
 
 data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             

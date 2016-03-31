@@ -110,15 +110,15 @@ instance Arbitrary RemoteMonad where
   
 runWeakMonadWeakPacket :: RemoteMonad
 runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" 
-  $ \ tr ref -> M.runWeakMonad (nat $ runWP tr ref)
+  $ \ tr ref -> M.runMonad (nat $ runWP tr ref)
 
 runStrongMonadStrongPacket :: RemoteMonad
 runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket" 
-  $ \ tr ref -> M.runStrongMonad (nat $ runSP tr ref)
+  $ \ tr ref -> M.runMonad (nat $ runSP tr ref)
 
 runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
-  $ \ tr ref -> M.runApplicativeMonad (nat $ runAppP tr ref)
+  $ \ tr ref -> M.runMonad (nat $ runAppP tr ref)
 
 
 ----------------------------------------------------------------

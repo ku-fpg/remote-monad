@@ -25,9 +25,9 @@ module Control.Remote.Monad
     -- * The run functions
   , RunMonad(runMonadT)
   , runMonad
-  , runWeakMonad
-  , runStrongMonad
-  , runApplicativeMonad
+  , runWeakMonadT
+  , runStrongMonadT
+  , runApplicativeMonadT
   , runMonadSkeleton
   ) where
 
@@ -71,13 +71,13 @@ class RunMonad f where
   runMonadT :: (MonadCatch m) => (f c p :~> m) -> (RemoteT c p m :~> m)
 
 instance RunMonad WeakPacket where
-  runMonadT = runWeakMonad
+  runMonadT = runWeakMonadT
   
 instance RunMonad StrongPacket where
-  runMonadT = runStrongMonad
+  runMonadT = runStrongMonadT
 
 instance RunMonad ApplicativePacket where
-  runMonadT = runApplicativeMonad
+  runMonadT = runApplicativeMonadT
 
 runMonad  :: (RunMonad f, MonadCatch m) => (f c p :~> m) -> (RemoteMonad c p :~> m)
 runMonad f = (nat $ mapRemoteT (return . runIdentity)) >>> runMonadT f
@@ -106,14 +106,14 @@ runMonadSkeleton f = nat $ \ case
 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
-runWeakMonad :: (MonadCatch m) => (WeakPacket c p :~> m) -> (RemoteT c p m :~> m)
-runWeakMonad = runMonadSkeleton . A.runWeakApplicative
+runWeakMonadT :: (MonadCatch m) => (WeakPacket c p :~> m) -> (RemoteT c p m :~> m)
+runWeakMonadT = runMonadSkeleton . A.runWeakApplicative
 
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'StrongPacket') as large as possible,
 --   including over some monadic binds.
-runStrongMonad :: forall m c p . (MonadCatch m) => (StrongPacket c p :~> m) -> (RemoteT c p m:~> m)
-runStrongMonad (Nat f) = nat $ \ p -> do
+runStrongMonadT :: forall m c p . (MonadCatch m) => (StrongPacket c p :~> m) -> (RemoteT c p m:~> m)
+runStrongMonadT (Nat f) = nat $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go2 p)) (HStrongPacket id)
     f $ h $ Strong.Done
     case r of 
@@ -148,8 +148,8 @@ runStrongMonad (Nat f) = nat $ \ p -> do
 -- | The is the strong applicative strong remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible, 
 --   including over some monadic binds.
-runApplicativeMonad :: forall m c p . (MonadCatch m) => (A.ApplicativePacket c p :~> m) -> (RemoteT c p m :~> m)
-runApplicativeMonad (Nat f) = nat $ \ p -> do
+runApplicativeMonadT :: forall m c p . (MonadCatch m) => (A.ApplicativePacket c p :~> m) -> (RemoteT c p m :~> m)
+runApplicativeMonadT (Nat f) = nat $ \ p -> do
     (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ()) 
     f $ pk $ h -- should we stub out the call with only 'Pure'?
     case r of
