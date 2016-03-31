@@ -22,6 +22,8 @@ module Control.Remote.Monad
   , command
   , procedure
   , loop
+  , mapRemoteT
+  , mapRemoteApplicativeT
     -- * The run functions
   , RunMonad(runMonadT)
   , runMonad
