@@ -89,6 +89,7 @@ runStrongApplicative (Nat f) = nat $ \ p -> do
         put (HStrongPacket id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r2
+    go (T.Ap f g)      = go f <*> go g
     go (T.Local m)     = lift m
 
 -- | The applicative remote applicative, that is the identity function.
