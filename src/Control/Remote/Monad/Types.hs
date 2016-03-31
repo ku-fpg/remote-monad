@@ -17,6 +17,8 @@ module Control.Remote.Monad.Types
   ( RemoteT(..)
   , RemoteApplicativeT(..)
   , RemoteMonadException(..)
+  , mapRemoteT
+  , mapRemoteApplicativeT
   ) where
 
 
@@ -75,6 +77,9 @@ instance (Monad m) => Alternative (RemoteT c p m) where
 instance MonadTrans (RemoteT c p) where
    lift m = Appl $ Local m
 
+mapRemoteT :: (forall a . f a -> g a) -> RemoteT c p f a -> RemoteT c p g a
+mapRemoteT f (Appl app) = Appl (mapRemoteApplicativeT f app)
+mapRemoteT f _ = error "TODO"
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
 data RemoteApplicativeT c p m a where 
@@ -93,6 +98,13 @@ instance (Functor m)=>Applicative (RemoteApplicativeT c p m) where   -- may need
 
 instance MonadTrans (RemoteApplicativeT c p) where
     lift m = Local m
+
+mapRemoteApplicativeT :: (forall a . f a -> g a) -> RemoteApplicativeT c p f a -> RemoteApplicativeT c p g a
+mapRemoteApplicativeT f (Command c)   = Command c
+mapRemoteApplicativeT f (Procedure p) = Procedure p
+mapRemoteApplicativeT f (Local m)     = Local (f m)
+mapRemoteApplicativeT f (Ap g h)      = Ap (mapRemoteApplicativeT f g) (mapRemoteApplicativeT f h)
+mapRemoteApplicativeT f (Pure a)      = Pure a
 
 data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
