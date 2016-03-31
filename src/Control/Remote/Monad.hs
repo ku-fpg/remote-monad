@@ -23,7 +23,8 @@ module Control.Remote.Monad
   , procedure
   , loop
     -- * The run functions
-  , RunMonad(runMonad)
+  , RunMonad(runMonadT)
+  , runMonad
   , runWeakMonad
   , runStrongMonad
   , runApplicativeMonad
@@ -43,8 +44,10 @@ import           Control.Applicative
 import Control.Natural
 import Control.Monad.Catch
 import Control.Monad.Trans.Maybe
+import Control.Monad.Identity
+import Control.Category ((>>>))
 
-type RemoteMonad c p = RemoteT c p IO
+type RemoteMonad c p  = RemoteT c p Identity 
 
 -- | promote a command into the remote monad
 command :: c -> RemoteT c p m ()
@@ -65,18 +68,22 @@ loop f m = do  res <- m
 class RunMonad f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runMonad :: (MonadCatch m) => (f c p :~> m) -> (RemoteT c p m :~> m)
+  runMonadT :: (MonadCatch m) => (f c p :~> m) -> (RemoteT c p m :~> m)
 
 instance RunMonad WeakPacket where
-  runMonad = runWeakMonad
-
+  runMonadT = runWeakMonad
+  
 instance RunMonad StrongPacket where
-  runMonad = runStrongMonad
+  runMonadT = runStrongMonad
 
 instance RunMonad ApplicativePacket where
-  runMonad = runApplicativeMonad
+  runMonadT = runApplicativeMonad
 
- 
+runMonad  :: (RunMonad f, MonadCatch m) => (f c p :~> m) -> (RemoteMonad c p :~> m)
+runMonad f = (nat $ mapRemoteT (return . runIdentity)) >>> runMonadT f
+
+
+
 -- | This is a remote monad combinator, that takes an implementation
 --   of a remote applicative, splits the monad into applicatives
 --   without any merge stragegy, and uses the remote applicative.
