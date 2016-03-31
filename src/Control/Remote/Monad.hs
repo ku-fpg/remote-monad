@@ -146,6 +146,7 @@ runStrongMonadT (Nat f) = nat $ \ p -> do
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r2
     go (T.Ap g h) = go g <*> go h
+    go (T.Local m) = lift m
     
 -- | The is the strong applicative strong remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible, 
@@ -176,9 +177,12 @@ runApplicativeMonadT (Nat f) = nat $ \ p -> do
     go :: forall a .  T.RemoteApplicativeT c p m a -> StateT (T.RemoteApplicativeT c p m ()) m a
     go ap = case superApplicative ap of
                 Nothing -> do
-                  ap' <- get
-                  put (pure ())
-                  lift $ f $ (pk (ap' *> ap))
+                  case ap of 
+                    (T.Local m)-> lift m
+                    otherwise -> do
+                                ap' <- get
+                                put (pure ())
+                                lift $ f $ (pk (ap' *> ap))
                 Just a -> do
                   modify (\ ap' -> ap' <* ap)
                   return a
@@ -187,6 +191,7 @@ runApplicativeMonadT (Nat f) = nat $ \ p -> do
     superApplicative (T.Pure a)      = pure a
     superApplicative (T.Command   c) = Just ()
     superApplicative (T.Procedure p) = Nothing
+    superApplicative (T.Local m)     = Nothing 
     superApplicative (T.Ap g h)      = superApplicative g <*> superApplicative h
 
 

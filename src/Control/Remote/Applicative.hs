@@ -70,6 +70,7 @@ runWeakApplicative (Nat f) = nat go
     go (T.Procedure p) = f (Weak.Procedure p)
     go (T.Ap f g)      = go f <*> go g
     go (T.Pure      a) = pure a
+    go (T.Local     m) = m
 
 -- | The strong remote applicative, that bundles together commands.
 runStrongApplicative :: forall m c p . (Monad m) => (StrongPacket c p :~> m) -> (RemoteApplicativeT c p m :~> m)
@@ -88,12 +89,17 @@ runStrongApplicative (Nat f) = nat $ \ p -> do
         put (HStrongPacket id)
         r2 <- lift $ f $ cs $ Strong.Procedure $ p
         return $ r2
+    go (T.Local m)     = lift m
 
 -- | The applicative remote applicative, that is the identity function.
-runApplicativeApplicative :: (ApplicativePacket c p :~> m) -> (RemoteApplicativeT c p m :~> m)
-runApplicativeApplicative (Nat f) = nat $ f . go
+runApplicativeApplicative :: forall m c p . (ApplicativePacket c p :~> m) -> (RemoteApplicativeT c p m :~> m)
+runApplicativeApplicative (Nat f) = nat $ go2
   where
-    go :: T.RemoteApplicativeT c p m a -> ApplicativePacket c p a
+    go2 :: forall a . RemoteApplicativeT c p m a -> m a
+    go2 (T.Local m) =  m
+    go2 otherwise = f  $ go otherwise
+
+    go :: forall a . T.RemoteApplicativeT c p m a -> ApplicativePacket c p a
     go (T.Pure a)      = A.Pure a
     go (T.Command   c) = A.Command  c
     go (T.Procedure p) = A.Procedure p
