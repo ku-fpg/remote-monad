@@ -22,6 +22,7 @@ import Data.Foldable (toList)
 import Data.Sequence (Seq, fromList)
 
 import           Control.Natural (nat,(:~>),(#))
+import           Control.Applicative 
 
 import qualified Control.Remote.Monad as M
 import           Control.Remote.Monad.Packet.Applicative as AP
@@ -49,6 +50,8 @@ testProperties = testGroup "QuickCheck remote monad properties"
     , testProperty "compare two remote monad strategies"  $ testRunRemoteMonad
     , testProperty "send (m >>= k) = send m >>= send . k" $ testRemoteMonadBindLaw
     , testProperty "send (return a) = return a"           $ testRemoteMonadReturnLaw
+    , testProperty "local alt with push"                  $ testAlt
+    , testProperty "local alt with arbitrary"             $ testAltArbitrary
     ]
 
 
@@ -289,3 +292,62 @@ testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
 --    monitor $ collect $ (runMe, tr1)
     assert (x == x' && tr1 == [] && st1 == xs)
 
+testAlt :: RemoteMonad -> [A] -> A -> A -> A ->Property
+testAlt runMe xs x y z = monadicIO $ do
+    let m1 = do M.command (Push x)
+                M.command (Push y)
+    let m2 = M.command (Push z)
+    dev1 <- run $ newDevice xs runMe
+    ()   <- run $ sendM dev1 (m1 <|> m2)
+    ys   <- run $ readDevice  dev1
+    let assert1= (ys == (y:x:xs))
+    -----------------------------
+    
+    let m3 = do M.command (Push x)
+                empty
+                M.command (Push y)
+    let m4 = M.command (Push z)
+    dev2 <- run $ newDevice xs runMe
+    ()   <- run $ sendM dev2 (m3 <|> m4)
+    ys   <- run $ readDevice dev2
+    let assert2 = (ys == (z:x:xs))
+    -----------------------------
+
+    let m5 = do M.command (Push x)
+                M.command (Push y)
+                M.command (Push z)
+    let m6 = empty 
+    dev3 <- run $ newDevice xs runMe
+    ()   <- run $ sendM dev3 (m5 <|> m6)
+    ys   <- run $ readDevice dev3
+    let assert3 = (ys == (z:y:x:xs))
+
+    assert (assert1 && assert2 && assert3)
+
+testAltArbitrary :: RemoteMonad -> [A] -> Property
+testAltArbitrary runMe xs = monadicIO $ do
+   (Remote m1)   <- pick (arbitrary :: Gen (Remote A))
+   (Remote m2)   <- pick (arbitrary :: Gen (Remote A))
+
+   dev1 <- run $ newDevice xs runMe
+   dev2 <- run $ newDevice xs runMe
+   dev3 <- run $ newDevice xs runMe
+   dev4 <- run $ newDevice xs runMe
+
+   r1   <- run $ sendM dev1 (m1)
+   r2   <- run $ sendM dev2 (m1 <|> m2)
+   r3   <- run $ sendM dev3 (empty <|> m1)
+   r4   <- run $ sendM dev4 (m1 <|> empty)
+
+   y1   <- run $ readDevice dev1
+   y2   <- run $ readDevice dev2
+   y3   <- run $ readDevice dev3
+   y4   <- run $ readDevice dev4
+
+   assert (  r1 == r2 
+          && r2 == r3 
+          && r3 == r4 
+          && y1 == y2 
+          && y2 == y3
+          && y3 == y4
+          )
