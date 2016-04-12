@@ -109,7 +109,7 @@ runMonadSkeleton f = nat $ \ case
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
 runWeakMonadT :: (MonadCatch m) => (WeakPacket c p :~> m) -> (RemoteT c p m :~> m)
-runWeakMonadT = runMonadSkeleton . A.runWeakApplicative
+runWeakMonadT = runMonadSkeleton . A.runWeakApplicativeT
 
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'StrongPacket') as large as possible,

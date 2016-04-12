@@ -45,13 +45,16 @@ main = defaultMain testProperties
 
 testProperties :: TestTree
 testProperties = testGroup "QuickCheck remote monad properties"
-    [ testProperty "push works remotely"                  $ prop_push
-    , testProperty "pop works remotely"                   $ prop_pop 
-    , testProperty "compare two remote monad strategies"  $ testRunRemoteMonad
-    , testProperty "send (m >>= k) = send m >>= send . k" $ testRemoteMonadBindLaw
-    , testProperty "send (return a) = return a"           $ testRemoteMonadReturnLaw
-    , testProperty "local alt with push"                  $ testAlt
-    , testProperty "local alt with arbitrary"             $ testAltArbitrary
+    [ testProperty "push works remotely"                        $ prop_pushM
+    , testProperty "pop works remotely"                         $ prop_popM 
+    , testProperty "compare two remote monad strategies"        $ testRunRemoteMonad
+    , testProperty "send (m >>= k) = send m >>= send . k"       $ testRemoteMonadBindLaw
+    , testProperty "send (return a) = return a"                 $ testRemoteMonadReturnLaw
+    , testProperty "local alt with push"                        $ testAlt
+    , testProperty "local alt with arbitrary"                   $ testAltArbitrary
+    , testProperty "push works remotely (Applicative)"          $ prop_pushA
+    , testProperty "pop works remotely  (Applicative)"          $ prop_popA 
+    , testProperty "compare two remote applicative strategies"  $ testRunRemoteApplicative
     ]
 
 
@@ -98,16 +101,29 @@ runAppP tr ref (AP.Zip f g h)   = f <$> runAppP tr ref g <*> runAppP tr ref h
 -- The different ways of running remote monads.
 
 data RemoteMonad = RemoteMonad String (forall a . IORef [String] -> IORef [A] -> M.RemoteMonad C P :~> IO)
+data RemoteApplicative = RemoteApplicative String (forall a . IORef [String] -> IORef [A] -> A.RemoteApplicative C P :~> IO)
+
 
 instance Show RemoteMonad where
   show (RemoteMonad msg _) = "Remote Monad: " ++ msg
   
+instance Show RemoteApplicative where
+  show (RemoteApplicative msg _) = "Remote Applicative: " ++ msg
+
 instance Arbitrary RemoteMonad where
   arbitrary = elements 
     [ runWeakMonadWeakPacket
     , runStrongMonadStrongPacket
     , runApplicativeMonadApplicativePacket
     ]
+
+instance Arbitrary RemoteApplicative where
+  arbitrary = elements
+    [ runApplicativeWeakPacket
+    , runApplicativeStrongPacket
+    , runApplicativeApplicativePacket
+    ]
+    
 
 --- This is a complete enumeration of ways of building remote monads
   
@@ -123,42 +139,78 @@ runApplicativeMonadApplicativePacket :: RemoteMonad
 runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
   $ \ tr ref -> M.runMonad (nat $ runAppP tr ref)
 
+-- Ways of building remote applicative
+runApplicativeWeakPacket :: RemoteApplicative
+runApplicativeWeakPacket = RemoteApplicative "ApplicativeWeakPacket" 
+  $ \ tr ref -> A.runApplicative (nat $ runWP tr ref)
+
+runApplicativeStrongPacket :: RemoteApplicative
+runApplicativeStrongPacket = RemoteApplicative "ApplicativeStrongPacket" 
+  $ \ tr ref -> A.runApplicative (nat $ runSP tr ref)
+
+runApplicativeApplicativePacket :: RemoteApplicative
+runApplicativeApplicativePacket = RemoteApplicative "ApplicativeApplicativePacket" 
+  $ \ tr ref -> A.runApplicative (nat $ runAppP tr ref)
+
 
 ----------------------------------------------------------------
 
-data DeviceM = Device (IORef [String]) (IORef [A]) (M.RemoteMonad C P :~> IO)
+data DeviceM = DeviceM (IORef [String]) (IORef [A]) (M.RemoteMonad C P :~> IO)
+data DeviceA = DeviceA (IORef [String]) (IORef [A]) (A.RemoteApplicative C P :~> IO)
 
 sendM :: DeviceM -> M.RemoteMonad C P a -> IO a
-sendM (Device _ _ f) m = f # m
+sendM (DeviceM _ _ f) m = f # m
 
-newDevice :: [A] 
+sendA :: DeviceA -> A.RemoteApplicative C P a -> IO a
+sendA (DeviceA _ _ f) m = f # m
+
+newDeviceM :: [A] 
           -> RemoteMonad
           -> IO DeviceM
-newDevice xs (RemoteMonad _ f) = do
+newDeviceM xs (RemoteMonad _ f) = do
   tr <- newIORef []
   ref <- newIORef xs
-  return $ Device tr ref $ f tr ref
+  return $ DeviceM tr ref $ f tr ref
 
-readDevice :: DeviceM -> IO [A]
-readDevice (Device _ ref _) = readIORef ref
+newDeviceA :: [A] 
+          -> RemoteApplicative
+          -> IO DeviceA
+newDeviceA xs (RemoteApplicative _ f) = do
+  tr <- newIORef []
+  ref <- newIORef xs
+  return $ DeviceA tr ref $ f tr ref
 
-cmpDevices :: DeviceM -> DeviceM -> IO Bool
-cmpDevices d1 d2 = (==) <$> readDevice d1 <*> readDevice d2
+readDeviceM :: DeviceM -> IO [A]
+readDeviceM (DeviceM _ ref _) = readIORef ref
+
+readDeviceA :: DeviceA -> IO [A]
+readDeviceA (DeviceA _ ref _) = readIORef ref
+
+cmpDevicesM :: DeviceM -> DeviceM -> IO Bool
+cmpDevicesM d1 d2 = (==) <$> readDeviceM d1 <*> readDeviceM d2
 
 -- returns backwards, but is for cmp or debugging anyway
-traceDevice :: DeviceM -> IO [String]
-traceDevice (Device tr _ _) = readIORef tr 
+traceDeviceM :: DeviceM -> IO [String]
+traceDeviceM (DeviceM tr _ _) = readIORef tr 
 
+traceDeviceA :: DeviceA -> IO [String]
+traceDeviceA (DeviceA tr _ _) = readIORef tr 
 ----------------------------------------------------------------
 
 newtype Remote a = Remote (M.RemoteMonad C P a)
+newtype RemoteA a = RemoteA (A.RemoteApplicative C P a)
 
 instance Show (Remote a) where
   show _ = "<REMOTE>"
 
+instance Show (RemoteA a) where
+  show _ = "<REMOTEA>"
+
 instance Arbitrary (Remote A) where
   arbitrary = sized $ \ n -> Remote <$> arbitraryRemoteMonadA n
 
+instance Arbitrary (RemoteA A) where
+  arbitrary = sized $ \ n -> RemoteA <$> arbitraryRemoteApplicativeA n
 ----------------------------------------------------------------
 
 data RemoteBind :: * -> * where
@@ -195,6 +247,25 @@ arbitraryRemoteMonad' base n = frequency
     )
   ]
 
+arbitraryRemoteApplicative' :: (CoArbitrary a, Arbitrary a) => [Gen (A.RemoteApplicative C P a)] -> Int -> Gen (A.RemoteApplicative C P a)
+arbitraryRemoteApplicative' base 0 = oneof base 
+arbitraryRemoteApplicative' base n = frequency 
+  [ (1 , oneof base)
+  , (1 , do m1 <- arbitraryRemoteApplicativeA (n `div` 2)
+            m2 <- arbitraryRemoteApplicative' base (n `div` 2)
+            f  <- arbitrary
+            return (fmap f m1 <*> m2)
+    )
+  , (1 , do m1 <- arbitraryRemoteApplicativeA (n `div` 2)
+            m2 <- arbitraryRemoteApplicative' base (n `div` 2)
+            return (m1 *> m2)
+    )
+  , (1 , do m1 <- arbitraryRemoteApplicativeA (n `div` 2)
+            m2 <- arbitraryRemoteApplicative' base (n `div` 2)
+            return (m2 <* m1) -- reversed, because we want to return m2's result
+    )
+  ]
+
 arbitraryRemoteMonadUnit :: Int -> Gen (M.RemoteMonad C P ())
 arbitraryRemoteMonadUnit = arbitraryRemoteMonad'
   [ return (return ())
@@ -210,6 +281,11 @@ arbitraryRemoteMonadMaybeA = arbitraryRemoteMonad'
 arbitraryRemoteMonadA :: Int -> Gen (M.RemoteMonad C P A)
 arbitraryRemoteMonadA = arbitraryRemoteMonad'
   [ return <$> arbitrary
+  ]
+
+arbitraryRemoteApplicativeA :: Int -> Gen (A.RemoteApplicative C P A)
+arbitraryRemoteApplicativeA = arbitraryRemoteApplicative'
+  [ pure <$> arbitrary
   ]
 
 arbitraryBind :: (Int -> Gen (M.RemoteMonad C P a)) -> Int -> Gen (RemoteBind a)
@@ -228,19 +304,35 @@ arbitraryBind f n = oneof
 --------------------------------------------------------------------------
 
 -- Test the remote push primitive
-prop_push :: RemoteMonad -> [A] -> A -> Property
-prop_push runMe xs x = monadicIO $ do
-    dev <- run $ newDevice xs runMe
+prop_pushM :: RemoteMonad -> [A] -> A -> Property
+prop_pushM runMe xs x = monadicIO $ do
+    dev <- run $ newDeviceM xs runMe
     ()  <- run $ sendM dev (M.command (Push x))
-    ys  <- run $ readDevice  dev
+    ys  <- run $ readDeviceM  dev
+    assert (ys == (x : xs))
+
+prop_pushA :: RemoteApplicative -> [A] -> A -> Property
+prop_pushA runMe xs x = monadicIO $ do
+    dev <- run $ newDeviceA xs runMe
+    ()  <- run $ sendA dev (A.command (Push x))
+    ys  <- run $ readDeviceA  dev
     assert (ys == (x : xs))
 
 -- Test the remote pop primitive
-prop_pop :: RemoteMonad -> [A] -> Property
-prop_pop runMe xs = monadicIO $ do
-    dev <- run $ newDevice xs runMe
+prop_popM :: RemoteMonad -> [A] -> Property
+prop_popM runMe xs = monadicIO $ do
+    dev <- run $ newDeviceM xs runMe
     r   <- run $ sendM dev (M.procedure Pop)
-    ys  <- run $ readDevice  dev
+    ys  <- run $ readDeviceM  dev
+    case xs of
+      [] -> assert (r == Nothing && ys == [])
+      (x':xs') -> assert (r == Just x' && ys == xs')
+
+prop_popA :: RemoteApplicative -> [A] -> Property
+prop_popA runMe xs = monadicIO $ do
+    dev <- run $ newDeviceA xs runMe
+    r   <- run $ sendA dev (A.procedure Pop)
+    ys  <- run $ readDeviceA  dev
     case xs of
       [] -> assert (r == Nothing && ys == [])
       (x':xs') -> assert (r == Just x' && ys == xs')
@@ -248,15 +340,30 @@ prop_pop runMe xs = monadicIO $ do
 -- Check that two remote monad configurations given the same trace and same result
 testRunRemoteMonad :: RemoteMonad -> RemoteMonad -> Remote A -> [A] -> Property
 testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
-    dev1 <- run $ newDevice xs runMe1
+    dev1 <- run $ newDeviceM xs runMe1
     r1   <- run $ sendM dev1 m
-    tr1  <- run $ traceDevice dev1
-    st1  <- run $ readDevice dev1
+    tr1  <- run $ traceDeviceM dev1
+    st1  <- run $ readDeviceM dev1
 
-    dev2 <- run $ newDevice xs runMe2
+    dev2 <- run $ newDeviceM xs runMe2
     r2   <- run $ sendM dev2 m
-    tr2  <- run $ traceDevice dev2
-    st2  <- run $ readDevice dev2
+    tr2  <- run $ traceDeviceM dev2
+    st2  <- run $ readDeviceM dev2
+    
+--    monitor $ collect $ (tr1,tr2)
+    assert (r1 == r2 && tr1 == tr2 && st1 == st2)
+    
+testRunRemoteApplicative :: RemoteApplicative -> RemoteApplicative -> RemoteA A -> [A] -> Property
+testRunRemoteApplicative runMe1 runMe2 (RemoteA m) xs = monadicIO $ do
+    dev1 <- run $ newDeviceA xs runMe1
+    r1   <- run $ sendA dev1 m
+    tr1  <- run $ traceDeviceA dev1
+    st1  <- run $ readDeviceA dev1
+
+    dev2 <- run $ newDeviceA xs runMe2
+    r2   <- run $ sendA dev2 m
+    tr2  <- run $ traceDeviceA dev2
+    st2  <- run $ readDeviceA dev2
     
 --    monitor $ collect $ (tr1,tr2)
     assert (r1 == r2 && tr1 == tr2 && st1 == st2)
@@ -266,16 +373,16 @@ testRemoteMonadBindLaw :: RemoteMonad -> [A] -> Property
 testRemoteMonadBindLaw runMe xs = monadicIO $ do
     RemoteBind m k <- pick (sized $ arbitraryBind arbitraryRemoteMonadA)
 
-    dev1 <- run $ newDevice xs runMe
+    dev1 <- run $ newDeviceM xs runMe
     a    <- run $ sendM dev1 m
     r1   <- run $ sendM dev1 (k a)
-    tr1  <- run $ traceDevice dev1
-    st1  <- run $ readDevice dev1
+    tr1  <- run $ traceDeviceM dev1
+    st1  <- run $ readDeviceM dev1
 
-    dev2 <- run $ newDevice xs runMe
+    dev2 <- run $ newDeviceM xs runMe
     r2   <- run $ sendM dev2 (m >>= k)
-    tr2  <- run $ traceDevice dev2
-    st2  <- run $ readDevice dev2
+    tr2  <- run $ traceDeviceM dev2
+    st2  <- run $ readDeviceM dev2
 
 --    monitor $ collect $ (runMe, tr1)
     assert (r1 == r2 && tr1 == tr2 && st1 == st2)
@@ -284,10 +391,10 @@ testRemoteMonadBindLaw runMe xs = monadicIO $ do
 testRemoteMonadReturnLaw :: RemoteMonad -> [A] -> A -> Property
 testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
 
-    dev1 <- run $ newDevice xs runMe
+    dev1 <- run $ newDeviceM xs runMe
     x'   <- run $ sendM dev1 (return x)
-    tr1  <- run $ traceDevice dev1
-    st1  <- run $ readDevice dev1
+    tr1  <- run $ traceDeviceM dev1
+    st1  <- run $ readDeviceM dev1
 
 --    monitor $ collect $ (runMe, tr1)
     assert (x == x' && tr1 == [] && st1 == xs)
@@ -297,9 +404,9 @@ testAlt runMe xs x y z = monadicIO $ do
     let m1 = do M.command (Push x)
                 M.command (Push y)
     let m2 = M.command (Push z)
-    dev1 <- run $ newDevice xs runMe
+    dev1 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev1 (m1 <|> m2)
-    ys   <- run $ readDevice  dev1
+    ys   <- run $ readDeviceM  dev1
     let assert1= (ys == (y:x:xs))
     -----------------------------
     
@@ -307,9 +414,9 @@ testAlt runMe xs x y z = monadicIO $ do
                 empty
                 M.command (Push y)
     let m4 = M.command (Push z)
-    dev2 <- run $ newDevice xs runMe
+    dev2 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev2 (m3 <|> m4)
-    ys   <- run $ readDevice dev2
+    ys   <- run $ readDeviceM dev2
     let assert2 = (ys == (z:x:xs))
     -----------------------------
 
@@ -317,9 +424,9 @@ testAlt runMe xs x y z = monadicIO $ do
                 M.command (Push y)
                 M.command (Push z)
     let m6 = empty 
-    dev3 <- run $ newDevice xs runMe
+    dev3 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev3 (m5 <|> m6)
-    ys   <- run $ readDevice dev3
+    ys   <- run $ readDeviceM dev3
     let assert3 = (ys == (z:y:x:xs))
 
     assert (assert1 && assert2 && assert3)
@@ -329,20 +436,20 @@ testAltArbitrary runMe xs = monadicIO $ do
    (Remote m1)   <- pick (arbitrary :: Gen (Remote A))
    (Remote m2)   <- pick (arbitrary :: Gen (Remote A))
 
-   dev1 <- run $ newDevice xs runMe
-   dev2 <- run $ newDevice xs runMe
-   dev3 <- run $ newDevice xs runMe
-   dev4 <- run $ newDevice xs runMe
+   dev1 <- run $ newDeviceM xs runMe
+   dev2 <- run $ newDeviceM xs runMe
+   dev3 <- run $ newDeviceM xs runMe
+   dev4 <- run $ newDeviceM xs runMe
 
    r1   <- run $ sendM dev1 (m1)
    r2   <- run $ sendM dev2 (m1 <|> m2)
    r3   <- run $ sendM dev3 (empty <|> m1)
    r4   <- run $ sendM dev4 (m1 <|> empty)
 
-   y1   <- run $ readDevice dev1
-   y2   <- run $ readDevice dev2
-   y3   <- run $ readDevice dev3
-   y4   <- run $ readDevice dev4
+   y1   <- run $ readDeviceM dev1
+   y2   <- run $ readDeviceM dev2
+   y3   <- run $ readDeviceM dev3
+   y4   <- run $ readDeviceM dev4
 
    assert (  r1 == r2 
           && r2 == r3 
