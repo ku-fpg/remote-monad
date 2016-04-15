@@ -14,11 +14,9 @@ Portability: GHC
 -}
 
 module Control.Remote.Monad.Types 
-  ( RemoteT(..)
-  , RemoteApplicativeT(..)
+  ( RemoteLocalMonad(..)
+  , RemoteLocalApplicative(..)
   , RemoteMonadException(..)
-  , mapRemoteT
-  , mapRemoteApplicativeT
   ) where
 
 
@@ -27,91 +25,57 @@ import            Control.Monad.Catch
 import            Control.Applicative
 import            Data.Typeable
 import            Control.Monad.Trans.Class
+
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
-data RemoteT c  p m a where
-   Appl        :: RemoteApplicativeT c p m a -> RemoteT c p m a
-   Bind        :: RemoteT c p m a -> (a -> RemoteT c p m b) -> RemoteT c p m b
-   Ap'         :: RemoteT c p m (a -> b) -> RemoteT c p m a -> RemoteT c p m b
-   Alt         :: RemoteT c p m a -> RemoteT c p m a -> RemoteT c p m a
-   Empty       :: RemoteT c p m a 
-   Throw       :: Exception e => e -> RemoteT c p m a
-   Catch       :: Exception e => RemoteT c p m a -> (e -> RemoteT c p m a)-> RemoteT c p m a
+data RemoteLocalMonad (loc:: * -> *) (cmd:: *) (proc:: * -> *) a where
+   Appl        :: RemoteLocalApplicative loc cmd proc a -> RemoteLocalMonad loc cmd proc a
+   Bind        :: RemoteLocalMonad loc cmd proc a -> (a -> RemoteLocalMonad loc cmd proc b) -> RemoteLocalMonad loc cmd proc b
+   Ap'         :: RemoteLocalMonad loc cmd proc (a -> b) -> RemoteLocalMonad loc cmd proc a -> RemoteLocalMonad loc cmd proc b
+   Alt         :: RemoteLocalMonad loc cmd proc a -> RemoteLocalMonad loc cmd proc a -> RemoteLocalMonad loc cmd proc a
+   Empty       :: RemoteLocalMonad loc cmd proc a 
+   Throw       :: Exception e => e -> RemoteLocalMonad loc cmd proc a
+   Catch       :: Exception e => RemoteLocalMonad loc cmd proc a -> (e -> RemoteLocalMonad loc cmd proc a)-> RemoteLocalMonad loc cmd proc a
   
-instance (Functor m, Monad m) => Functor (RemoteT c p m) where
+instance  Functor (RemoteLocalMonad loc cmd proc) where
   fmap f m = pure f <*> m
 
-instance (Functor m, Monad m) => Applicative (RemoteT c p m) where
+instance  Applicative (RemoteLocalMonad loc cmd proc) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
   f        <*> g        = Ap' f g
 
-{-
-  Appl f   *> Appl g   = Appl (f *> g)
-  Appl f   *> Bind m k = Bind (Appl f *> m) k
-  Bind m k *> r        = Bind m (\ a -> k a *> r)
-
-  Appl f   <* Appl g   = Appl (f <* g)
-
-  Appl f   <* Bind m k = Bind (pure (,) <*> Appl f <*> m) (\ (a,b) -> pure a <* k b)
-  Bind m k <* r        = Bind m (\ a -> k a <* r)
--}
-
-instance (Monad m) => Monad (RemoteT c p m) where
-  return = pure
-  m >>= k    = Bind m k
+instance Monad (RemoteLocalMonad loc cmd proc) where
+  return      = pure
+  m >>= k     = Bind m k
   Empty >> m2 = Empty
-  m1 >> m2 = m1 *> m2 -- This improves our bundling opportunities
+  m1 >> m2    = m1 *> m2 -- This improves our bundling opportunities
 
-instance (Monad m) => MonadThrow (RemoteT c p m) where
+instance MonadThrow (RemoteLocalMonad loc cmd proc) where
     throwM e = Throw e
 
-instance (Monad m) => MonadCatch (RemoteT c p m) where
+instance MonadCatch (RemoteLocalMonad loc cmd proc) where
     catch m f = Catch m f
 
 
-instance (Monad m) => Alternative (RemoteT c p m) where
+instance Alternative (RemoteLocalMonad loc cmd proc) where
     empty = Empty
     Empty <|> p = p
     m1 <|> m2 = Alt m1 m2
 
-instance MonadTrans (RemoteT c p) where
-   lift m = Appl $ Local m
-
-mapRemoteT :: (forall a . f a -> g a) -> RemoteT c p f a -> RemoteT c p g a
-mapRemoteT f (Appl app) = Appl (mapRemoteApplicativeT f app)
-mapRemoteT f (Bind m k) = Bind (mapRemoteT f m) (\ a -> mapRemoteT f (k a))
-mapRemoteT f (Ap' g h ) = Ap' (mapRemoteT f g) (mapRemoteT f h) 
-mapRemoteT f (Alt g h)  = Alt (mapRemoteT f g) (mapRemoteT f h) 
-mapRemoteT _ (Empty)    = Empty
-mapRemoteT _ (Throw e)  = Throw e
-mapRemoteT f (Catch m handler) =  Catch (mapRemoteT f m) (\e -> mapRemoteT f (handler e))
-
-
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
-data RemoteApplicativeT c p m a where 
-   Command   :: c   -> RemoteApplicativeT c p m () 
-   Procedure :: p a -> RemoteApplicativeT c p m a
-   Local     :: m a -> RemoteApplicativeT c p m a
-   Ap        :: RemoteApplicativeT c p m (a -> b) -> RemoteApplicativeT c p m a -> RemoteApplicativeT c p m b
-   Pure      :: a   -> RemoteApplicativeT c p m a  
+data RemoteLocalApplicative (loc:: * -> *) (cmd:: *) (proc:: * -> *) a where 
+   Command   :: cmd   -> RemoteLocalApplicative loc cmd proc () 
+   Procedure :: proc a -> RemoteLocalApplicative loc cmd proc a
+   Local     :: loc a -> RemoteLocalApplicative loc cmd proc a
+   Ap        :: RemoteLocalApplicative loc cmd proc (a -> b) -> RemoteLocalApplicative loc cmd proc a -> RemoteLocalApplicative loc cmd proc b
+   Pure      :: a   -> RemoteLocalApplicative loc cmd proc a  
   
-instance (Functor m)=>Functor (RemoteApplicativeT c p m) where
+instance Functor (RemoteLocalApplicative loc cmd proc) where
   fmap f g = pure f <*> g
 
-instance (Functor m)=>Applicative (RemoteApplicativeT c p m) where   -- may need m to be restricted to Monad here
+instance Applicative (RemoteLocalApplicative loc cmd proc) where   -- may need m to be restricted to Monad here
   pure a = Pure a
   (<*>) = Ap
-
-instance MonadTrans (RemoteApplicativeT c p) where
-    lift m = Local m
-
-mapRemoteApplicativeT :: (forall a . f a -> g a) -> RemoteApplicativeT c p f a -> RemoteApplicativeT c p g a
-mapRemoteApplicativeT _ (Command c)   = Command c
-mapRemoteApplicativeT _ (Procedure p) = Procedure p
-mapRemoteApplicativeT f (Local m)     = Local (f m)
-mapRemoteApplicativeT f (Ap g h)      = Ap (mapRemoteApplicativeT f g) (mapRemoteApplicativeT f h)
-mapRemoteApplicativeT _ (Pure a)      = Pure a
-
 data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
                                                          
