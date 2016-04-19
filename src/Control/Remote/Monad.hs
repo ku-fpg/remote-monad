@@ -21,6 +21,7 @@ module Control.Remote.Monad
     -- * The primitive lift functions
   , command
   , procedure
+  , local
   , loop
     -- * The run functions
   , RunMonad(runLocalMonad)
@@ -55,6 +56,9 @@ command = Appl . A.command
 -- | promote a procedure into the remote monad
 procedure :: p a -> RemoteLocalMonad l c p a
 procedure = Appl . A.procedure 
+
+local :: l a -> RemoteLocalMonad l c p a
+local = Appl . A.local
 
 loop :: forall a c p l . (a-> Bool) -> RemoteLocalMonad l c p a -> RemoteLocalMonad l c p a
 loop f m = do  res <- m

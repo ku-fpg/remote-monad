@@ -20,6 +20,7 @@ module Control.Remote.Applicative
     -- * The primitive lift functions
   , command
   , procedure
+  , local
     -- * The run functions
   , RunApplicative(runLocalApplicative)
   , runApplicative
@@ -51,6 +52,9 @@ command c = T.Command c
 -- | promote a command into the applicative
 procedure :: p a -> RemoteLocalApplicative l c p a
 procedure p = T.Procedure p
+
+local :: l a -> RemoteLocalApplicative l c p a
+local l = T.Local l
 
 -- | 'RunApplicative' is the overloading for choosing the appropriate bundling strategy for applicative.
 class RunApplicative f where
