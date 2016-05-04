@@ -112,28 +112,6 @@ runStrongApplicative (Nat rf) = nat $ \ p -> do
     go (T.Empty )      = empty
 
 
-
-data Wrapper f a where
-    Value :: f a -> Wrapper f a
-    Throw' :: f () -> Wrapper f a
-
-instance Applicative f => Functor (Wrapper f) where
-    fmap f g = (pure f)<*> g
-
-instance Applicative f => Applicative (Wrapper f) where
-    pure a = Value $ pure a
-    (Value f) <*> (Value g) = Value (f <*> g)
-    (Throw' f) <*> g = Throw' f 
-    (Value f)  <*> (Throw' g) = Throw' (f *> g) 
-
-instance Applicative f => Alternative (Wrapper f) where
-     empty = Throw' (pure ())
-     (Throw' g) <|> (Value h) = Value (g *> h)
-     (Throw' g) <|> (Throw' h) = Throw' (g *> h)
-     (Value g)  <|> _ = Value g
-
-
-
 -- | The applicative remote applicative, that is the identity function.
 runApplicativeApplicative :: forall m c p . (MonadThrow m) => (ApplicativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
 runApplicativeApplicative (Nat rf) = nat (go4 . go3)

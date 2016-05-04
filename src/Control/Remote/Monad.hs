@@ -42,8 +42,6 @@ import           Control.Applicative
 import Control.Natural
 import Control.Monad.Catch
 import Control.Monad.Trans.Maybe
-import Control.Category ((>>>))
-import Debug.Trace
 
 
 -- | promote a command into the remote monad
@@ -151,7 +149,7 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
       Just v -> return v
   where
     go2 :: forall a . RemoteMonad c p a -> MaybeT (StateT (T.RemoteApplicative c p ()) m) a
-    go2 (Appl app)   = lift $ go app
+    go2 (Appl app)   = lift $ lift $ unwrap $ go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
     go2 (Ap' g h)    = go2 g <*> go2 h
     go2 (Alt' m1 m2) = go2 m1 <|> go2 m2
@@ -163,7 +161,19 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-         
+    go :: forall a . T.RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
+    go (T.Empty) = empty
+    go (T.Pure a) = pure a
+    go (T.Command c) = Value (A.Command c)
+    go (T.Procedure p) = Value (A.Procedure p)
+    go (T.Ap g h)      = (go g) <*> (go h)
+    go (T.Alt g h)     = (go g) <|> (go h)
+      
+    unwrap :: Wrapper(ApplicativePacket c p) a -> m a
+    unwrap (Value pkt) = rf pkt
+    unwrap (Throw' pkt) = do rf pkt
+                             throwM RemoteEmptyException
+{-     
     go :: forall a .  T.RemoteApplicative c p a -> StateT (T.RemoteApplicative c p ()) m a
     go ap = case superApplicative ap of
                 Nothing -> do
@@ -181,7 +191,7 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
     superApplicative (T.Ap g h)      = superApplicative g <*> superApplicative h
     superApplicative (T.Alt g h)     = superApplicative g <|> superApplicative h
     superApplicative (T.Empty)       = Nothing 
-
+-}
 
     -- It all comes down to this. Converting quickly between T.RemoteApplicative and ApplicativePacket.
     

@@ -17,6 +17,7 @@ module Control.Remote.Monad.Types
   ( RemoteMonad(..)
   , RemoteApplicative(..)
   , RemoteMonadException(..)
+  , Wrapper(..)
   ) where
 
 
@@ -88,12 +89,22 @@ data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
                                                          
 instance Exception RemoteMonadException                 
-                                                         
-{-                                                         
-instance Binary RemoteMonadException where              
-    put (RemoteEmptyException s) = do put (219:: Word8) 
-                                                         
-    get = do i <-get                                     
-             case i :: Word8 of                          
-               219 -> return $ RemoteEmptyException 
--}
+                                                        
+data Wrapper f a where
+    Value :: f a -> Wrapper f a
+    Throw' :: f () -> Wrapper f a
+
+instance Applicative f => Functor (Wrapper f) where
+    fmap f g = (pure f)<*> g
+    
+instance Applicative f => Applicative (Wrapper f) where
+    pure a = Value $ pure a
+    (Value f) <*> (Value g) = Value (f <*> g)
+    (Throw' f) <*> g = Throw' f 
+    (Value f)  <*> (Throw' g) = Throw' (f *> g)
+    
+instance Applicative f => Alternative (Wrapper f) where
+     empty = Throw' (pure ()) 
+     (Throw' g) <|> (Value h) = Value (g *> h)
+     (Throw' g) <|> (Throw' h) = Throw' (g *> h)
+     (Value g)  <|> _ = Value g
