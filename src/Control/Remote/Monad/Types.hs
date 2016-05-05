@@ -14,9 +14,10 @@ Portability: GHC
 -}
 
 module Control.Remote.Monad.Types 
-  ( RemoteLocalMonad(..)
-  , RemoteLocalApplicative(..)
+  ( RemoteMonad(..)
+  , RemoteApplicative(..)
   , RemoteMonadException(..)
+  , Wrapper(..)
   ) where
 
 
@@ -27,67 +28,86 @@ import            Data.Typeable
 import            Control.Monad.Trans.Class
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
-data RemoteLocalMonad (loc:: * -> *) (cmd:: *) (proc:: * -> *) a where
-   Appl        :: RemoteLocalApplicative loc cmd proc a -> RemoteLocalMonad loc cmd proc a
-   Bind        :: RemoteLocalMonad loc cmd proc a -> (a -> RemoteLocalMonad loc cmd proc b) -> RemoteLocalMonad loc cmd proc b
-   Ap'         :: RemoteLocalMonad loc cmd proc (a -> b) -> RemoteLocalMonad loc cmd proc a -> RemoteLocalMonad loc cmd proc b
-   Alt         :: RemoteLocalMonad loc cmd proc a -> RemoteLocalMonad loc cmd proc a -> RemoteLocalMonad loc cmd proc a
-   Empty       :: RemoteLocalMonad loc cmd proc a 
-   Throw       :: Exception e => e -> RemoteLocalMonad loc cmd proc a
-   Catch       :: Exception e => RemoteLocalMonad loc cmd proc a -> (e -> RemoteLocalMonad loc cmd proc a)-> RemoteLocalMonad loc cmd proc a
+data RemoteMonad  (cmd:: *) (proc:: * -> *) a where
+   Appl        :: RemoteApplicative cmd proc a -> RemoteMonad cmd proc a
+   Bind        :: RemoteMonad cmd proc a -> (a -> RemoteMonad cmd proc b) -> RemoteMonad cmd proc b
+   Ap'         :: RemoteMonad cmd proc (a -> b) -> RemoteMonad cmd proc a -> RemoteMonad cmd proc b
+   Alt'        :: RemoteMonad cmd proc a -> RemoteMonad cmd proc a -> RemoteMonad cmd proc a
+   Empty'      :: RemoteMonad cmd proc a 
+   Throw       :: Exception e => e -> RemoteMonad cmd proc a
+   Catch       :: Exception e => RemoteMonad cmd proc a -> (e -> RemoteMonad cmd proc a)-> RemoteMonad cmd proc a
   
-instance  Functor (RemoteLocalMonad loc cmd proc) where
+instance  Functor (RemoteMonad cmd proc) where
   fmap f m = pure f <*> m
 
-instance  Applicative (RemoteLocalMonad loc cmd proc) where
+instance  Applicative (RemoteMonad cmd proc) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
   f        <*> g        = Ap' f g
 
-instance Monad (RemoteLocalMonad loc cmd proc) where
+instance Monad (RemoteMonad cmd proc) where
   return      = pure
   m >>= k     = Bind m k
-  Empty >> m2 = Empty
+  Empty' >> m2 = Empty'
   m1 >> m2    = m1 *> m2 -- This improves our bundling opportunities
 
-instance MonadThrow (RemoteLocalMonad loc cmd proc) where
+instance MonadThrow (RemoteMonad cmd proc) where
     throwM e = Throw e
 
-instance MonadCatch (RemoteLocalMonad loc cmd proc) where
+instance MonadCatch (RemoteMonad cmd proc) where
     catch m f = Catch m f
 
-
-instance Alternative (RemoteLocalMonad loc cmd proc) where
-    empty = Empty
-    Empty <|> p = p
-    m1 <|> m2 = Alt m1 m2
+instance Alternative (RemoteMonad cmd proc) where
+    empty        = Empty'
+    Empty' <|> p = p
+    Appl g <|> Appl h = Appl (g <|> h)
+    m1 <|> m2    = Alt' m1 m2
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
-data RemoteLocalApplicative (loc:: * -> *) (cmd:: *) (proc:: * -> *) a where 
-   Command   :: cmd   -> RemoteLocalApplicative loc cmd proc () 
-   Procedure :: proc a -> RemoteLocalApplicative loc cmd proc a
-   Local     :: loc a -> RemoteLocalApplicative loc cmd proc a
-   Ap        :: RemoteLocalApplicative loc cmd proc (a -> b) -> RemoteLocalApplicative loc cmd proc a -> RemoteLocalApplicative loc cmd proc b
-   Pure      :: a   -> RemoteLocalApplicative loc cmd proc a  
+data RemoteApplicative (cmd:: *) (proc:: * -> *) a where 
+   Command   :: cmd   -> RemoteApplicative cmd proc () 
+   Procedure :: proc a -> RemoteApplicative cmd proc a
+   Alt       :: RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a
+   Ap        :: RemoteApplicative cmd proc (a -> b) -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc b
+   Pure      :: a   -> RemoteApplicative cmd proc a  
+   Empty     :: RemoteApplicative cmd proc a
   
-instance Functor (RemoteLocalApplicative loc cmd proc) where
+instance Functor (RemoteApplicative cmd proc) where
   fmap f g = pure f <*> g
 
-instance Applicative (RemoteLocalApplicative loc cmd proc) where   -- may need m to be restricted to Monad here
+instance Applicative (RemoteApplicative cmd proc) where   -- may need m to be restricted to Monad here
   pure a = Pure a
   (<*>) = Ap
+
+instance Alternative (RemoteApplicative cmd proc) where
+   empty       = Empty
+   Empty <|> p = p
+   m1 <|> m2   = Alt m1 m2
+   
 data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
                                                          
 instance Exception RemoteMonadException                 
-                                                         
-{-                                                         
-instance Binary RemoteBinaryException where              
-    put (RemoteBinaryException s) = do put (220:: Word8) 
-                                       put s             
-                                                         
-    get = do i <-get                                     
-             case i :: Word8 of                          
-               220 -> do s <- get                        
-                         return $ RemoteBinaryException s
--}
+      
+
+value :: f a -> Wrapper f a
+value  = Value 
+                                                  
+data Wrapper f a where
+    Value :: f a -> Wrapper f a
+    Throw' :: f () -> Wrapper f a
+
+instance Applicative f => Functor (Wrapper f) where
+    fmap f g = (pure f)<*> g
+    
+instance Applicative f => Applicative (Wrapper f) where
+    pure a = Value $ pure a
+    (Value f) <*> (Value g) = Value (f <*> g)
+    (Throw' f) <*> g = Throw' f 
+    (Value f)  <*> (Throw' g) = Throw' (f *> g)
+    
+instance Applicative f => Alternative (Wrapper f) where
+     empty = Throw' (pure ()) 
+     (Throw' g) <|> (Value h) = Value (g *> h)
+     (Throw' g) <|> (Throw' h) = Throw' (g *> h)
+     (Value g)  <|> _ = Value g

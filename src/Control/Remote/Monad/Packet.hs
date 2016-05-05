@@ -16,11 +16,14 @@ module Control.Remote.Monad.Packet
     Promote(..)
   , promoteToStrong
   , promoteToApplicative
+  , promoteToAlternative
   ) where
 import qualified Control.Remote.Monad.Packet.Weak as Weak
 import qualified Control.Remote.Monad.Packet.Strong as Strong
 import qualified Control.Remote.Monad.Packet.Applicative as A
+import qualified Control.Remote.Monad.Packet.Alternative as Alt
 import           Control.Natural
+import           Control.Applicative
 
 class Promote f where
     promote :: (Applicative m) => (Weak.WeakPacket c p :~> m) -> (f c p :~> m)
@@ -30,6 +33,19 @@ instance Promote A.ApplicativePacket where
 
 instance Promote Strong.StrongPacket where
    promote f = promoteToStrong f
+
+
+-- | promotes a function that can work over WeakPackets to a function that can work over Alternative Packets
+promoteToAlternative :: forall c p m . (Alternative m) => (Weak.WeakPacket c p :~> m) -> (Alt.AlternativePacket c p :~> m)
+promoteToAlternative (Nat f) =  Nat $ alternativeFunc
+                   where
+                        alternativeFunc :: (Alternative m) => (Alt.AlternativePacket c p a -> m a)
+                        alternativeFunc (Alt.Command c) =  f (Weak.Command c)
+                        alternativeFunc (Alt.Procedure p) = f (Weak.Procedure p)
+                        alternativeFunc (Alt.Zip f1 a b) =  f1 <$> alternativeFunc a <*> alternativeFunc b
+                        alternativeFunc (Alt.Alt a b) =  alternativeFunc a <|> alternativeFunc b
+                        alternativeFunc (Alt.Pure a) = pure a
+
 
 -- | promotes a function that can work over WeakPackets to a function that can work over Applicative Packets
 promoteToApplicative :: forall c p m . (Applicative m) => (Weak.WeakPacket c p :~> m) -> (A.ApplicativePacket c p :~> m)

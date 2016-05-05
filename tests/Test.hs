@@ -50,11 +50,12 @@ testProperties = testGroup "QuickCheck remote monad properties"
     , testProperty "compare two remote monad strategies"        $ testRunRemoteMonad
     , testProperty "send (m >>= k) = send m >>= send . k"       $ testRemoteMonadBindLaw
     , testProperty "send (return a) = return a"                 $ testRemoteMonadReturnLaw
-    , testProperty "local alt with push"                        $ testAlt
+    , testProperty "local alt with push"                        $ testAltM
     , testProperty "local alt with arbitrary"                   $ testAltArbitrary
     , testProperty "push works remotely (Applicative)"          $ prop_pushA
     , testProperty "pop works remotely  (Applicative)"          $ prop_popA 
     , testProperty "compare two remote applicative strategies"  $ testRunRemoteApplicative
+    , testProperty "local alt with push (Applicative)"          $ testAltA
     ]
 
 
@@ -399,8 +400,8 @@ testRemoteMonadReturnLaw runMe xs x = monadicIO $ do
 --    monitor $ collect $ (runMe, tr1)
     assert (x == x' && tr1 == [] && st1 == xs)
 
-testAlt :: RemoteMonad -> [A] -> A -> A -> A ->Property
-testAlt runMe xs x y z = monadicIO $ do
+testAltM :: RemoteMonad -> [A] -> A -> A -> A ->Property
+testAltM runMe xs x y z = monadicIO $ do
     let m1 = do M.command (Push x)
                 M.command (Push y)
     let m2 = M.command (Push z)
@@ -427,6 +428,35 @@ testAlt runMe xs x y z = monadicIO $ do
     dev3 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev3 (m5 <|> m6)
     ys   <- run $ readDeviceM dev3
+    let assert3 = (ys == (z:y:x:xs))
+
+    assert (assert1 && assert2 && assert3)
+
+testAltA :: RemoteApplicative -> [A] -> A -> A -> A ->Property
+testAltA runMe xs x y z = monadicIO $ do
+    let m1 = A.command (Push x) *>  A.command (Push y)
+    let m2 = A.command (Push z)
+    dev1 <- run $ newDeviceA xs runMe
+    ()   <- run $ sendA dev1 (m1 <|> m2)
+    ys   <- run $ readDeviceA  dev1
+    let assert1= (ys == (y:x:xs))
+    -----------------------------
+    
+    let m3 = A.command (Push x) *> empty *> A.command (Push y)
+    let m4 = A.command (Push z)
+    dev2 <- run $ newDeviceA xs runMe
+    ()   <- run $ sendA dev2 (m3 <|> m4)
+    ys   <- run $ readDeviceA dev2
+    let assert2 = (ys == (z:x:xs))
+    -----------------------------
+
+    let m5 = A.command (Push x) *>
+             A.command (Push y) *>
+             A.command (Push z)
+    let m6 = empty 
+    dev3 <- run $ newDeviceA xs runMe
+    ()   <- run $ sendA dev3 (m5 <|> m6)
+    ys   <- run $ readDeviceA dev3
     let assert3 = (ys == (z:y:x:xs))
 
     assert (assert1 && assert2 && assert3)

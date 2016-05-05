@@ -62,7 +62,7 @@ superCommand :: AlternativePacket c p a -> Maybe a
 superCommand (Pure a)        = pure a
 superCommand (Command c)     = pure ()
 superCommand (Procedure _)   = Nothing
-superCommand (Alt g h)       = Nothing -- for now
+superCommand (Alt g h)       = Nothing -- TODO for now
 superCommand (Zip ($) g h)   = ($) <$> superCommand g <*> superCommand h
 
 
