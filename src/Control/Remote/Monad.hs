@@ -143,60 +143,69 @@ runStrongMonad (Nat rf) = nat $ \ p -> do
 runApplicativeMonad :: forall m c p . (MonadCatch m) => (A.ApplicativePacket c p :~> m) -> (RemoteMonad c p :~> m)
 runApplicativeMonad (Nat rf) = nat $ \ p -> do
     (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ()) 
-    rf $ pk $ h -- should we stub out the call with only 'Pure'?
+    case  pk h of -- should we stub out the call with only 'Pure'?
+      Left a ->  return a
+      Right b -> rf $ b
     case r of
       Nothing -> throwM RemoteEmptyException
       Just v -> return v
   where
     go2 :: forall a . RemoteMonad c p a -> MaybeT (StateT (T.RemoteApplicative c p ()) m) a
-    go2 (Appl app)   = lift $ lift $ unwrap $ go app
+    go2 (Appl app)   = lift $ unwrap $ go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
     go2 (Ap' g h)    = go2 g <*> go2 h
     go2 (Alt' m1 m2) = go2 m1 <|> go2 m2
     go2 Empty'       = empty
     go2 (Throw e)    = lift $ do
-        ap' <- get
-        put (pure ())
-        ()<-lift $ rf $ (pk ap')
+        ()<-discharge id
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-    go :: forall a . T.RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
+    go :: forall a . T.RemoteApplicative c p a -> Wrapper (T.RemoteApplicative c p) a
     go (T.Empty) = empty
     go (T.Pure a) = pure a
-    go (T.Command c) = Value (A.Command c)
-    go (T.Procedure p) = Value (A.Procedure p)
+    go (T.Command c) = Value (T.Command c)
+    go (T.Procedure p) = Value (T.Procedure p)
     go (T.Ap g h)      = (go g) <*> (go h)
     go (T.Alt g h)     = (go g) <|> (go h)
-      
-    unwrap :: Wrapper(ApplicativePacket c p) a -> m a
-    unwrap (Value pkt) = rf pkt
-    unwrap (Throw' pkt) = do rf pkt
-                             throwM RemoteEmptyException
-{-     
-    go :: forall a .  T.RemoteApplicative c p a -> StateT (T.RemoteApplicative c p ()) m a
-    go ap = case superApplicative ap of
-                Nothing -> do
-                              ap' <- get
-                              put (pure ())
-                              lift $ rf $ (pk (ap' *> ap))
-                Just a -> do
-                  modify (\ ap' -> ap' <* ap)
-                  return a
+    
+    discharge ::Applicative f => (f () -> T.RemoteApplicative c p a )-> StateT (f ()) m a 
+    discharge f = do 
+                 ap' <- get
+                 put (pure ()) -- clear state
+                 case pk $ f ap' of
+                    Left a -> return a
+                    Right pkt -> lift $ rf pkt 
 
+    -- Given a wrapped applicative discharge via local monad
+    unwrap :: forall a . Wrapper(T.RemoteApplicative c p) a -> StateT (T.RemoteApplicative c p ()) m a
+    unwrap (Value ap) = case superApplicative ap of
+                            Nothing ->do
+                                      discharge $ \ap' -> (ap' *> ap) 
+                            Just a  ->do
+                                       modify (\ap' -> ap' <* ap)
+                                       return a
+
+    unwrap (Throw' ap) = do 
+                         discharge $ \ap' -> (ap' <* ap) 
+                         throwM RemoteEmptyException
+
+    -- Do we know the answer? Nothing  =  we need to get it
     superApplicative :: T.RemoteApplicative c p a -> Maybe a
     superApplicative (T.Pure a)      = pure a
     superApplicative (T.Command   c) = Just ()
     superApplicative (T.Procedure p) = Nothing
-    superApplicative (T.Ap g h)      = superApplicative g <*> superApplicative h
-    superApplicative (T.Alt g h)     = superApplicative g <|> superApplicative h
-    superApplicative (T.Empty)       = Nothing 
--}
+    superApplicative (T.Ap g h)      =  (superApplicative g) <*> (superApplicative h)
+    superApplicative (T.Alt g h)     = Nothing
+    superApplicative (T.Empty)       = Nothing
 
-    -- It all comes down to this. Converting quickly between T.RemoteApplicative and ApplicativePacket.
-    
-    pk :: T.RemoteApplicative c p a -> ApplicativePacket c p a
-    pk (T.Pure a)      = A.Pure a
-    pk (T.Command   c) = A.Command c
-    pk (T.Procedure p) = A.Procedure p
-    pk (T.Ap g h)      = A.Zip ($) (pk g) (pk h)
+    -- Either A or a Packet to return A
+    pk :: T.RemoteApplicative c p a -> Either a (ApplicativePacket c p a)
+    pk (T.Pure a)      = Left a
+    pk (T.Command   c) =Right $ A.Command c
+    pk (T.Procedure p) =Right $ A.Procedure p
+    pk (T.Ap g h)      = case (pk g, pk h) of
+                           (Left a, Left b)   -> Left (a b)
+                           (Left a, Right b)  ->Right $ A.Zip ($) (pure a) b
+                           (Right a, Left b)  ->Right $ A.Zip ($) a (pure b)
+                           (Right a, Right b) ->Right $ A.Zip ($) a b

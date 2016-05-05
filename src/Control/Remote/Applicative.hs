@@ -117,7 +117,7 @@ runApplicativeApplicative :: forall m c p . (MonadThrow m) => (ApplicativePacket
 runApplicativeApplicative (Nat rf) = nat (go4 . go3)
   where
     go3 :: forall a . T.RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
-    go3 (T.Empty)       = empty
+    go3 (T.Empty)       = empty   --uses Throw'
     go3 (T.Pure a)      = pure a
     go3 (T.Command c)   = Value (A.Command c)
     go3 (T.Procedure p) = Value (A.Procedure p)

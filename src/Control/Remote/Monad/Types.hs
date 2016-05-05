@@ -57,7 +57,6 @@ instance MonadThrow (RemoteMonad cmd proc) where
 instance MonadCatch (RemoteMonad cmd proc) where
     catch m f = Catch m f
 
-
 instance Alternative (RemoteMonad cmd proc) where
     empty        = Empty'
     Empty' <|> p = p
@@ -89,7 +88,11 @@ data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
                                                          
 instance Exception RemoteMonadException                 
-                                                        
+      
+
+value :: f a -> Wrapper f a
+value  = Value 
+                                                  
 data Wrapper f a where
     Value :: f a -> Wrapper f a
     Throw' :: f () -> Wrapper f a
