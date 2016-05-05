@@ -144,8 +144,9 @@ runApplicativeMonad :: forall m c p . (MonadCatch m) => (A.ApplicativePacket c p
 runApplicativeMonad (Nat rf) = nat $ \ p -> do
     (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ()) 
     case  pk h of -- should we stub out the call with only 'Pure'?
-      Left a ->  return a
-      Right b -> rf $ b
+      Pure' a ->  return a
+      Pkt f b ->  do res <- rf $ b
+                     return $ f res
     case r of
       Nothing -> throwM RemoteEmptyException
       Just v -> return v
@@ -169,14 +170,16 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
     go (T.Ap g h)      = (go g) <*> (go h)
     go (T.Alt g h)     = (go g) <|> (go h)
     
-    discharge ::Applicative f => (f () -> T.RemoteApplicative c p a )-> StateT (f ()) m a 
-    discharge f = do 
+    -- g is a function that will take the current state as input
+    discharge :: Applicative f => (f () -> T.RemoteApplicative c p a )-> StateT (f ()) m a 
+    discharge g = do 
                  ap' <- get
                  put (pure ()) -- clear state
-                 case pk $ f ap' of
-                    Left a -> return a
-                    Right pkt -> lift $ rf pkt 
-
+                 case pk $ g ap' of
+                    Pure' a -> return a
+                    Pkt f pkt -> do 
+                                    res <- lift $ rf pkt 
+                                    return $ f res    
     -- Given a wrapped applicative discharge via local monad
     unwrap :: forall a . Wrapper(T.RemoteApplicative c p) a -> StateT (T.RemoteApplicative c p ()) m a
     unwrap (Value ap) = case superApplicative ap of
@@ -200,12 +203,15 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
     superApplicative (T.Empty)       = Nothing
 
     -- Either A or a Packet to return A
-    pk :: T.RemoteApplicative c p a -> Either a (ApplicativePacket c p a)
-    pk (T.Pure a)      = Left a
-    pk (T.Command   c) =Right $ A.Command c
-    pk (T.Procedure p) =Right $ A.Procedure p
+    pk :: T.RemoteApplicative c p a -> X a 
+    pk (T.Pure a)      = Pure' a
+    pk (T.Command   c) = Pkt id $ A.Command c
+    pk (T.Procedure p) = Pkt id $ A.Procedure p
     pk (T.Ap g h)      = case (pk g, pk h) of
-                           (Left a, Left b)   -> Left (a b)
-                           (Left a, Right b)  ->Right $ A.Zip ($) (pure a) b
-                           (Right a, Left b)  ->Right $ A.Zip ($) a (pure b)
-                           (Right a, Right b) ->Right $ A.Zip ($) a b
+                           (Pure' a, Pure' b)   -> Pure' (a b)
+                           (Pure' a, Pkt f b)   -> Pkt (\b' -> a (f b')) b
+                           (Pkt f a, Pure' b)   -> Pkt (\a' -> f a' b) a
+                  --         (Pkt f a, Pkt g b)   -> Pkt (f $ g) $ A.Zip ($) a b
+data X a where
+   Pure' :: a -> X a
+   Pkt  :: (a -> b) -> ApplicativePacket c p a -> X b 
