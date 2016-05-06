@@ -24,7 +24,7 @@ module Control.Remote.Applicative
   , runWeakApplicative
   , runStrongApplicative
   , runApplicativeApplicative
---  , runAlternativeApplicative
+  , runAlternativeApplicative
   ) where
 
 
@@ -70,6 +70,9 @@ instance RunApplicative StrongPacket where
 instance RunApplicative ApplicativePacket where
   runApplicative = runApplicativeApplicative
 
+instance RunApplicative AlternativePacket where
+  runApplicative = runAlternativeApplicative
+
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
 runWeakApplicative :: forall m c p . (MonadThrow m) => (WeakPacket c p :~> m) -> (RemoteApplicative c p :~> m)
 runWeakApplicative (Nat rf) = nat $ go  
@@ -97,7 +100,7 @@ runStrongApplicative (Nat rf) = nat $ \ p -> do
       Just a -> return a
       Nothing -> throwM RemoteEmptyException
   where
-    go :: forall a . T.RemoteApplicative c p a -> MaybeT (StateT (HStrongPacket c p) m) a
+    go :: forall a . RemoteApplicative c p a -> MaybeT (StateT (HStrongPacket c p) m) a
     go (T.Pure a)      = return a
     go (T.Command c)   = lift $ do
         modify (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command c))
@@ -116,7 +119,7 @@ runStrongApplicative (Nat rf) = nat $ \ p -> do
 runApplicativeApplicative :: forall m c p . (MonadThrow m) => (ApplicativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
 runApplicativeApplicative (Nat rf) = nat (go4 . go3)
   where
-    go3 :: forall a . T.RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
+    go3 :: forall a . RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
     go3 (T.Empty)       = empty   --uses Throw'
     go3 (T.Pure a)      = pure a
     go3 (T.Command c)   = Value (A.Command c)
@@ -128,3 +131,16 @@ runApplicativeApplicative (Nat rf) = nat (go4 . go3)
     go4 (Value pkt)  = rf pkt
     go4 (Throw' pkt) = do () <- rf pkt  
                           throwM RemoteEmptyException   
+
+
+                          
+runAlternativeApplicative :: forall m c p . (MonadThrow m) => (AlternativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runAlternativeApplicative (Nat rf) = nat $ \p ->  rf $ go p
+   where
+      go :: forall a . RemoteApplicative c p a -> AlternativePacket c p a
+      go (T.Empty)       = Alt.Empty
+      go (T.Pure a)      = pure a
+      go (T.Command c)   = Alt.Command c
+      go (T.Procedure p) = Alt.Procedure p
+      go (T.Ap g h)      = (go g) <*> (go h)
+      go (T.Alt g h)     = (go g) <|> (go h)
