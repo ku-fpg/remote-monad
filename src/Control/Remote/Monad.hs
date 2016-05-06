@@ -211,7 +211,7 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
                            (Pure' a, Pure' b)   -> Pure' (a b)
                            (Pure' a, Pkt f b)   -> Pkt (\b' -> a (f b')) b
                            (Pkt f a, Pure' b)   -> Pkt (\a' -> f a' b) a
-                  --         (Pkt f a, Pkt g b)   -> Pkt (f $ g) $ A.Zip ($) a b
+                           (Pkt f a, Pkt g b)   -> Pkt id $ A.Zip (\ a' b' -> f a' (g b')) a b
 data X c p a where
    Pure' :: a -> X c p a
    Pkt  :: (a -> b) -> ApplicativePacket c p a -> X c p b 
