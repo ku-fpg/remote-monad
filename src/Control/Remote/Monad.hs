@@ -171,7 +171,7 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
     go (T.Alt g h)     = (go g) <|> (go h)
     
     -- g is a function that will take the current state as input
-    discharge :: Applicative f => (f () -> T.RemoteApplicative c p a )-> StateT (f ()) m a 
+    discharge :: forall a f . Applicative f => (f () -> T.RemoteApplicative c p a )-> StateT (f ()) m a 
     discharge g = do 
                  ap' <- get
                  put (pure ()) -- clear state
@@ -203,7 +203,7 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
     superApplicative (T.Empty)       = Nothing
 
     -- Either A or a Packet to return A
-    pk :: T.RemoteApplicative c p a -> X a 
+    pk :: T.RemoteApplicative c p a -> X c p a 
     pk (T.Pure a)      = Pure' a
     pk (T.Command   c) = Pkt id $ A.Command c
     pk (T.Procedure p) = Pkt id $ A.Procedure p
@@ -212,6 +212,6 @@ runApplicativeMonad (Nat rf) = nat $ \ p -> do
                            (Pure' a, Pkt f b)   -> Pkt (\b' -> a (f b')) b
                            (Pkt f a, Pure' b)   -> Pkt (\a' -> f a' b) a
                   --         (Pkt f a, Pkt g b)   -> Pkt (f $ g) $ A.Zip ($) a b
-data X a where
-   Pure' :: a -> X a
-   Pkt  :: (a -> b) -> ApplicativePacket c p a -> X b 
+data X c p a where
+   Pure' :: a -> X c p a
+   Pkt  :: (a -> b) -> ApplicativePacket c p a -> X c p b 
