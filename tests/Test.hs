@@ -27,6 +27,7 @@ import           Control.Applicative
 import qualified Control.Remote.Monad as M
 import           Control.Remote.Monad.Packet.Applicative as AP
 import qualified Control.Remote.Monad.Packet.Weak as WP
+import qualified Control.Remote.Monad.Packet.Alternative as Alt
 import qualified Control.Remote.Monad.Packet.Strong as SP
 import qualified Control.Remote.Applicative as A
 
@@ -98,6 +99,13 @@ runAppP tr ref (AP.Procedure p) = runWP tr ref (WP.Procedure p)
 runAppP tr ref (AP.Pure a)      = pure a
 runAppP tr ref (AP.Zip f g h)   = f <$> runAppP tr ref g <*> runAppP tr ref h
 
+runAltP :: IORef [String] -> IORef [A] -> Alt.AlternativePacket C P a -> IO a
+runAltP tr ref (Alt.Command   c) = runWP tr ref (WP.Command c)
+runAltP tr ref (Alt.Procedure p) = runWP tr ref (WP.Procedure p)
+runAltP tr ref (Alt.Pure a)      = pure a
+runAltP tr ref (Alt.Zip f g h)   = f <$> runAltP tr ref g <*> runAltP tr ref h
+runAltP tr ref (Alt.Alt g h)     = (runAltP tr ref g) <|> (runAltP tr ref h)
+runAltP tr ref (Alt.Empty)       = empty
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
 
@@ -113,9 +121,10 @@ instance Show RemoteApplicative where
 
 instance Arbitrary RemoteMonad where
   arbitrary = elements 
-    [ runWeakMonadWeakPacket
-    , runStrongMonadStrongPacket
-    , runApplicativeMonadApplicativePacket
+    [ runMonadWeakPacket
+    , runMonadStrongPacket
+    , runMonadApplicativePacket
+    , runMonadAlternativePacket
     ]
 
 instance Arbitrary RemoteApplicative where
@@ -128,17 +137,21 @@ instance Arbitrary RemoteApplicative where
 
 --- This is a complete enumeration of ways of building remote monads
   
-runWeakMonadWeakPacket :: RemoteMonad
-runWeakMonadWeakPacket = RemoteMonad "WeakMonadWeakPacket" 
+runMonadWeakPacket :: RemoteMonad
+runMonadWeakPacket = RemoteMonad "MonadWeakPacket" 
   $ \ tr ref -> M.runMonad (nat $ runWP tr ref)
 
-runStrongMonadStrongPacket :: RemoteMonad
-runStrongMonadStrongPacket = RemoteMonad "StrongMonadStrongPacket" 
+runMonadStrongPacket :: RemoteMonad
+runMonadStrongPacket = RemoteMonad "MonadStrongPacket" 
   $ \ tr ref -> M.runMonad (nat $ runSP tr ref)
 
-runApplicativeMonadApplicativePacket :: RemoteMonad
-runApplicativeMonadApplicativePacket = RemoteMonad "ApplicativeMonadApplicativePacket" 
+runMonadApplicativePacket :: RemoteMonad
+runMonadApplicativePacket = RemoteMonad "MonadApplicativePacket" 
   $ \ tr ref -> M.runMonad (nat $ runAppP tr ref)
+
+runMonadAlternativePacket :: RemoteMonad
+runMonadAlternativePacket = RemoteMonad "MonadAlternativePacket" 
+  $ \ tr ref -> M.runMonad (nat $ runAltP tr ref)
 
 -- Ways of building remote applicative
 runApplicativeWeakPacket :: RemoteApplicative
@@ -152,6 +165,10 @@ runApplicativeStrongPacket = RemoteApplicative "ApplicativeStrongPacket"
 runApplicativeApplicativePacket :: RemoteApplicative
 runApplicativeApplicativePacket = RemoteApplicative "ApplicativeApplicativePacket" 
   $ \ tr ref -> A.runApplicative (nat $ runAppP tr ref)
+
+runApplicativeAlternativePacket :: RemoteApplicative
+runApplicativeAlternativePacket = RemoteApplicative "ApplicativeAlternativePacket" 
+  $ \ tr ref -> A.runApplicative (nat $ runAltP tr ref)
 
 
 ----------------------------------------------------------------
