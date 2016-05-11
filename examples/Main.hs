@@ -52,26 +52,24 @@ runAP (AP.Procedure Temperature) =do
                                     return 42
 runAP (AP.Zip f g h) = do 
              f <$> runAP g <*> runAP h
-runAP (AP.Pure a) = return a
+runAP (AP.Pure a) = do 
+                       putStrLn "Pure"
+                       return a
 ---------------------------------------------------------
---runAlt :: AlternativePacket Command Procedure a -> IO a
---runAlt (Alt.Command (Say s)) = print s
---runAlt (Alt.Procedure Temperature) = do
---                                  putStrLn "Temp Call"
---                                  return 42
---runAlt (Alt.Zip f g h) = f <$> runAlt g <*> runAlt h
---runAlt (Alt.Pure a)    = return a
---runAlt (Alt g h)       = do 
---           putStrLn "Alternative"
---           a <-runAlt g <|> runAlt h
---           putStrLn "End Alternative"
---           return a
+runAlt :: AlternativePacket Command Procedure a -> IO a
+runAlt (Alt.Command (Say s)) = print s
+runAlt (Alt.Procedure Temperature) = do
+                                  putStrLn "Temp Call"
+                                  return 42
+runAlt (Alt.Zip f g h) = f <$> runAlt g <*> runAlt h
+runAlt (Alt.Pure a)    = return a
+runAlt (Alt g h)       = do 
+           putStrLn "Alternative"
+           a <-(runAlt g) <|> (runAlt h)
+           putStrLn "End Alternative"
+           return a
+runAlt (Alt.Empty) = empty
 -----------------------------------------------------------
---runApp1 :: (AlternativePacket Command Procedure a -> IO a)
---runApp1 pkt = do putStrLn "------"
---                 runAlt pkt 
---
--- send functions
 sendWeak :: RemoteMonad Command Procedure a -> IO a
 sendWeak = run $ runMonad $ nat (\pkt -> do putStrLn "-----"; runWP pkt)
 
@@ -81,8 +79,8 @@ sendStrong = run $ runMonad $ nat (\pkt -> do putStrLn "-----"; runSP pkt)
 sendApp :: RemoteMonad Command Procedure a -> IO a
 sendApp = run $ runMonad $ nat (\pkt -> do putStrLn "-----"; runAP pkt)
 
---sendAlt :: RemoteMonad Command Procedure a -> IO a
---sendAlt = run $ runMonad $ nat (\pkt -> do putStrLn "-----"; runAlt pkt)
+sendAlt :: RemoteMonad Command Procedure a -> IO a
+sendAlt = run $ runMonad $ nat (\pkt -> do putStrLn "-----"; runAlt pkt)
 ---------------------------------------------------------
 
 main :: IO ()
@@ -96,8 +94,8 @@ main = do
         putStrLn "\nAppSend\n"
         runTest $ nat sendApp
 
---        putStrLn "\nAltSend\n"
---        runTest $ nat sendAlt 
+        putStrLn "\nAltSend\n"
+        runTest $ nat sendAlt 
 
 --Run Test Suite
 runTest :: (RemoteMonad Command Procedure :~> IO)-> IO()
