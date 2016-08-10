@@ -18,9 +18,6 @@ Stability:   Experimental
 -}
 module Main (main) where
 
-import Data.Foldable (toList)
-import Data.Sequence (Seq, fromList)
-
 import           Control.Natural (nat,(:~>),(#))
 import           Control.Applicative 
 
@@ -91,26 +88,26 @@ runWP tr ref (WP.Procedure (Pop)) = do
 runSP :: IORef [String] -> IORef [A] -> SP.StrongPacket C P a -> IO a
 runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Command c) >> runSP tr ref pk
 runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Procedure p)
-runSP tr ref SP.Done             = pure ()
+runSP _  _    SP.Done            = pure ()
 
 runAppP :: IORef [String] -> IORef [A] -> ApplicativePacket C P a -> IO a
 runAppP tr ref (AP.Command   c) = runWP tr ref (WP.Command c)
 runAppP tr ref (AP.Procedure p) = runWP tr ref (WP.Procedure p)
-runAppP tr ref (AP.Pure a)      = pure a
+runAppP _  _   (AP.Pure a)      = pure a
 runAppP tr ref (AP.Zip f g h)   = f <$> runAppP tr ref g <*> runAppP tr ref h
 
 runAltP :: IORef [String] -> IORef [A] -> Alt.AlternativePacket C P a -> IO a
 runAltP tr ref (Alt.Command   c) = runWP tr ref (WP.Command c)
 runAltP tr ref (Alt.Procedure p) = runWP tr ref (WP.Procedure p)
-runAltP tr ref (Alt.Pure a)      = pure a
+runAltP _ _ (Alt.Pure a)         = pure a
 runAltP tr ref (Alt.Zip f g h)   = f <$> runAltP tr ref g <*> runAltP tr ref h
 runAltP tr ref (Alt.Alt g h)     = (runAltP tr ref g) <|> (runAltP tr ref h)
-runAltP tr ref (Alt.Empty)       = empty
+runAltP _  _   (Alt.Empty)       = empty
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
 
-data RemoteMonad = RemoteMonad String (forall a . IORef [String] -> IORef [A] -> M.RemoteMonad C P :~> IO)
-data RemoteApplicative = RemoteApplicative String (forall a . IORef [String] -> IORef [A] -> A.RemoteApplicative C P :~> IO)
+data RemoteMonad = RemoteMonad String (IORef [String] -> IORef [A] -> M.RemoteMonad C P :~> IO)
+data RemoteApplicative = RemoteApplicative String (IORef [String] -> IORef [A] -> A.RemoteApplicative C P :~> IO)
 
 
 instance Show RemoteMonad where
@@ -132,6 +129,7 @@ instance Arbitrary RemoteApplicative where
     [ runApplicativeWeakPacket
     , runApplicativeStrongPacket
     , runApplicativeApplicativePacket
+    , runApplicativeAlternativePacket
     ]
     
 
@@ -203,9 +201,6 @@ readDeviceM (DeviceM _ ref _) = readIORef ref
 
 readDeviceA :: DeviceA -> IO [A]
 readDeviceA (DeviceA _ ref _) = readIORef ref
-
-cmpDevicesM :: DeviceM -> DeviceM -> IO Bool
-cmpDevicesM d1 d2 = (==) <$> readDeviceM d1 <*> readDeviceM d2
 
 -- returns backwards, but is for cmp or debugging anyway
 traceDeviceM :: DeviceM -> IO [String]
@@ -424,18 +419,18 @@ testAltM runMe xs x y z = monadicIO $ do
     let m2 = M.command (Push z)
     dev1 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev1 (m1 <|> m2)
-    ys   <- run $ readDeviceM  dev1
-    let assert1= (ys == (y:x:xs))
+    ys1  <- run $ readDeviceM  dev1
+    let assert1= (ys1 == (y:x:xs))
     -----------------------------
     
-    let m3 = do M.command (Push x)
-                empty
+    let m3 = do () <- M.command (Push x)
+                () <- empty
                 M.command (Push y)
     let m4 = M.command (Push z)
     dev2 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev2 (m3 <|> m4)
-    ys   <- run $ readDeviceM dev2
-    let assert2 = (ys == (z:x:xs))
+    ys2  <- run $ readDeviceM dev2
+    let assert2 = (ys2 == (z:x:xs))
     -----------------------------
 
     let m5 = do M.command (Push x)
@@ -444,8 +439,8 @@ testAltM runMe xs x y z = monadicIO $ do
     let m6 = empty 
     dev3 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev3 (m5 <|> m6)
-    ys   <- run $ readDeviceM dev3
-    let assert3 = (ys == (z:y:x:xs))
+    ys3  <- run $ readDeviceM dev3
+    let assert3 = (ys3 == (z:y:x:xs))
 
     assert (assert1 && assert2 && assert3)
 
@@ -455,16 +450,16 @@ testAltA runMe xs x y z = monadicIO $ do
     let m2 = A.command (Push z)
     dev1 <- run $ newDeviceA xs runMe
     ()   <- run $ sendA dev1 (m1 <|> m2)
-    ys   <- run $ readDeviceA  dev1
-    let assert1= (ys == (y:x:xs))
+    ys1  <- run $ readDeviceA  dev1
+    let assert1= (ys1 == (y:x:xs))
     -----------------------------
     
     let m3 = A.command (Push x) *> empty *> A.command (Push y)
     let m4 = A.command (Push z)
     dev2 <- run $ newDeviceA xs runMe
     ()   <- run $ sendA dev2 (m3 <|> m4)
-    ys   <- run $ readDeviceA dev2
-    let assert2 = (ys == (z:x:xs))
+    ys2  <- run $ readDeviceA dev2
+    let assert2 = (ys2 == (z:x:xs))
     -----------------------------
 
     let m5 = A.command (Push x) *>
@@ -473,8 +468,8 @@ testAltA runMe xs x y z = monadicIO $ do
     let m6 = empty 
     dev3 <- run $ newDeviceA xs runMe
     ()   <- run $ sendA dev3 (m5 <|> m6)
-    ys   <- run $ readDeviceA dev3
-    let assert3 = (ys == (z:y:x:xs))
+    ys3   <- run $ readDeviceA dev3
+    let assert3 = (ys3 == (z:y:x:xs))
 
     assert (assert1 && assert2 && assert3)
 

@@ -92,7 +92,6 @@ runMonadSkeleton f = nat $ \ case
   Alt' m1 m2 -> (runMonadSkeleton f # m1) 
                   `catch`(\ e-> case e :: RemoteMonadException of
                             RemoteEmptyException -> runMonadSkeleton f # m2
-                            _                    -> throwM e
                          )
   Empty'    -> throwM RemoteEmptyException
   Throw e   -> throwM e 

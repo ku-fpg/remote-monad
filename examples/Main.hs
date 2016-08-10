@@ -107,7 +107,6 @@ runTest (Nat f) = do
                (f  testAltException)
                  `catch` (\e -> case e ::RemoteMonadException of
                                        RemoteEmptyException -> putStrLn "Empty Exception Thrown"
-                                       _                     -> throw e
                          )
                (f $ testThrowM)
                  `catch` (\e -> case e :: ArithException of
@@ -140,7 +139,7 @@ testBind = say "one" >> say "two" >> temperature >>= say . ("Temperature: " ++) 
 testAlt :: RemoteMonad Command Procedure ()
 testAlt = do
     say "three" <|> say "ERROR"
-    say "test1" >> say "test2" >> say "test3" >> temperature <|> temperature
+    _ <- say "test1" >> say "test2" >> say "test3" >> temperature <|> temperature
     (say "test1" >> say "test2" >> empty >> say "test3") <|> say "fail"
     say "four" <|> empty
     empty       <|> say "five" 
@@ -154,8 +153,8 @@ testAlt = do
 testAltException :: RemoteMonad Command Procedure ()
 testAltException = do
     say "finished tests, now testing exception thrown"
-    (do say "eight"; empty; say "shouldn't See me")  --expected exception 
-       <|> (do say "nine"; empty; say "AHAHA") 
+    (do say "eight"; _ <- empty; say "shouldn't See me")  --expected exception 
+       <|> (do say "nine"; _ <- empty; say "AHAHA") 
 
 
 --test throw
@@ -184,8 +183,6 @@ testCatch2 =do
                           RemoteEmptyException -> do
                                                   say "Caught Exception in Send"
                                                   temperature
-                          _                    -> do say "Oops!"
-                                                     return (-1)
                 )                                    
      say (show r)                                    
  
