@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Applicative 
+module Control.Remote.Applicative
   ( -- * The remote applicative
     RemoteApplicative
     -- * The primitive lift functions
@@ -75,25 +75,25 @@ instance RunApplicative AlternativePacket where
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
 runWeakApplicative :: forall m c p . (MonadThrow m) => (WeakPacket c p :~> m) -> (RemoteApplicative c p :~> m)
-runWeakApplicative (Nat rf) = nat $ go  
+runWeakApplicative (NT rf) = wrapNT $ go
   where
     go :: forall a . RemoteApplicative c p a ->  m a
-    go p = do r <- runMaybeT (go2 p) 
-              case r of  
+    go p = do r <- runMaybeT (go2 p)
+              case r of
                 Nothing -> throwM RemoteEmptyException
                 Just a  -> return a
-  
+
     go2 :: forall a . RemoteApplicative c p a -> MaybeT m a
     go2 (T.Command   c)  = lift $ rf (Weak.Command c)
     go2 (T.Procedure p)  = lift $ rf (Weak.Procedure p)
     go2 (T.Ap g h)      = go2 g <*> go2 h
     go2 (T.Pure      a) = pure a
     go2 T.Empty         = empty
-    go2 (T.Alt g h)     = (go2 g <|> go2 h) 
-                          
+    go2 (T.Alt g h)     = (go2 g <|> go2 h)
+
 -- | The strong remote applicative, that bundles together commands.
 runStrongApplicative :: forall m c p . (MonadThrow m) => (StrongPacket c p :~> m) -> (RemoteApplicative c p :~> m)
-runStrongApplicative (Nat rf) = nat $ \ p -> do
+runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go p)) (HStrongPacket id)
     rf $ h $ Strong.Done
     case r of
@@ -117,7 +117,7 @@ runStrongApplicative (Nat rf) = nat $ \ p -> do
 
 -- | The applicative remote applicative, that is the identity function.
 runApplicativeApplicative :: forall m c p . (MonadThrow m) => (ApplicativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
-runApplicativeApplicative (Nat rf) = nat (go4 . go3)
+runApplicativeApplicative (NT rf) = wrapNT (go4 . go3)
   where
     go3 :: forall a . RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
     go3 (T.Empty)       = empty   --uses Throw'
@@ -129,13 +129,13 @@ runApplicativeApplicative (Nat rf) = nat (go4 . go3)
 
     go4 :: forall a . Wrapper (ApplicativePacket c p) a -> m a
     go4 (Value pkt)  = rf pkt
-    go4 (Throw' pkt) = do () <- rf pkt  
-                          throwM RemoteEmptyException   
+    go4 (Throw' pkt) = do () <- rf pkt
+                          throwM RemoteEmptyException
 
 
-                          
+
 runAlternativeApplicative :: forall m c p . (MonadThrow m) => (AlternativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
-runAlternativeApplicative (Nat rf) = nat $ \p ->  rf $ go p
+runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
    where
       go :: forall a . RemoteApplicative c p a -> AlternativePacket c p a
       go (T.Empty)       = Alt.Empty

@@ -5,7 +5,7 @@
 import Criterion.Main
 import Data.List (foldl')
 
-import           Control.Natural (nat,run,(:~>),(#))
+import           Control.Natural (wrapNT,unwrapNT,(:~>),(#))
 
 import qualified Control.Remote.Monad as M
 import           Control.Remote.Monad.Packet.Applicative as AP
@@ -38,8 +38,8 @@ main = do
   case args of
     [] -> withArgs defArgs main2
     other -> main2
-  
-main2 :: IO ()  
+
+main2 :: IO ()
 main2 = do
   stack <- newIORef []
 
@@ -52,44 +52,44 @@ main2 = do
   defaultMain
     [ bgroup packetType
         [ bgroup "left associated monadic binds"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testLeftM x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testLeftM x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "right associated monadic binds"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testRightM x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "<*> with >>="
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightBindAndApp x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testRightBindAndApp x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "balanced monadic binds"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testBalancedM x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testBalancedM x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "left associated >>"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testLeftM_ x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testLeftM_ x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "right associated >>"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM_ x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testRightM_ x) bindCount
             | bindCount <- bindCounts
             ]
 {-
         , bgroup "left associated ma >>= ignoreArg mb"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testLeftM_ignore x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testLeftM_ignore x) bindCount
             | bindCount <- bindCounts
             ]
         , bgroup "right associated ma >>= ignoreArg mb"
-            [ bench (show bindCount) $ whnfIO $ (\x -> run sender $ testRightM_ignore x) bindCount
+            [ bench (show bindCount) $ whnfIO $ (\x -> unwrapNT sender $ testRightM_ignore x) bindCount
             | bindCount <- bindCounts
             ]
 -}
         ]
-    | (packetType,sender) <- 
-           [("weak",   M.runMonad (nat $ runWP   stack))
-           ,("strong", M.runMonad (nat $ runSP   stack))
-           ,("app",    M.runMonad (nat $ runAppP stack))
+    | (packetType,sender) <-
+           [("weak",   M.runMonad (wrapNT $ runWP   stack))
+           ,("strong", M.runMonad (wrapNT $ runSP   stack))
+           ,("app",    M.runMonad (wrapNT $ runAppP stack))
            ]
     ]
 

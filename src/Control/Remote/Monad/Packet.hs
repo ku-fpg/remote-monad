@@ -11,8 +11,8 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad.Packet 
-  ( 
+module Control.Remote.Monad.Packet
+  (
     Promote(..)
   , promoteToStrong
   , promoteToApplicative
@@ -37,7 +37,7 @@ instance Promote Strong.StrongPacket where
 
 -- | promotes a function that can work over WeakPackets to a function that can work over Alternative Packets
 promoteToAlternative :: forall c p m . (Alternative m) => (Weak.WeakPacket c p :~> m) -> (Alt.AlternativePacket c p :~> m)
-promoteToAlternative (Nat f) =  Nat $ alternativeFunc
+promoteToAlternative (NT f) =  NT $ alternativeFunc
                    where
                         alternativeFunc :: (Alternative m) => (Alt.AlternativePacket c p a -> m a)
                         alternativeFunc (Alt.Command c) =  f (Weak.Command c)
@@ -49,7 +49,7 @@ promoteToAlternative (Nat f) =  Nat $ alternativeFunc
 
 -- | promotes a function that can work over WeakPackets to a function that can work over Applicative Packets
 promoteToApplicative :: forall c p m . (Applicative m) => (Weak.WeakPacket c p :~> m) -> (A.ApplicativePacket c p :~> m)
-promoteToApplicative (Nat f) =  Nat $ applicativeFunc
+promoteToApplicative (NT f) =  NT $ applicativeFunc
                     where
                         applicativeFunc :: (Applicative m) => (A.ApplicativePacket c p a -> m a)
                         applicativeFunc (A.Command c) =  f (Weak.Command c)
@@ -60,7 +60,7 @@ promoteToApplicative (Nat f) =  Nat $ applicativeFunc
 
 -- | promotes a function that can work over WeakPackets to a function that can work over Strong Packets
 promoteToStrong :: forall c p m . (Applicative m) => (Weak.WeakPacket c p :~> m) -> (Strong.StrongPacket c p :~> m)
-promoteToStrong (Nat f) = Nat $ strongFunc
+promoteToStrong (NT f) = NT $ strongFunc
                        where
                            strongFunc :: (Applicative m) => (Strong.StrongPacket c p a -> m a)
                            strongFunc (Strong.Command c cmds) = f (Weak.Command c) *> strongFunc cmds

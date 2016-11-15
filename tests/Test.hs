@@ -18,8 +18,8 @@ Stability:   Experimental
 -}
 module Main (main) where
 
-import           Control.Natural (nat,(:~>),(#))
-import           Control.Applicative 
+import           Control.Natural (wrapNT,(:~>),(#))
+import           Control.Applicative
 
 import qualified Control.Remote.Monad as M
 import           Control.Remote.Monad.Packet.Applicative as AP
@@ -28,7 +28,7 @@ import qualified Control.Remote.Monad.Packet.Alternative as Alt
 import qualified Control.Remote.Monad.Packet.Strong as SP
 import qualified Control.Remote.Applicative as A
 
-import Test.QuickCheck 
+import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.QuickCheck (testProperty)
@@ -44,14 +44,14 @@ main = defaultMain testProperties
 testProperties :: TestTree
 testProperties = testGroup "QuickCheck remote monad properties"
     [ testProperty "push works remotely"                        $ prop_pushM
-    , testProperty "pop works remotely"                         $ prop_popM 
+    , testProperty "pop works remotely"                         $ prop_popM
     , testProperty "compare two remote monad strategies"        $ testRunRemoteMonad
     , testProperty "send (m >>= k) = send m >>= send . k"       $ testRemoteMonadBindLaw
     , testProperty "send (return a) = return a"                 $ testRemoteMonadReturnLaw
     , testProperty "local alt with push"                        $ testAltM
     , testProperty "local alt with arbitrary"                   $ testAltArbitrary
     , testProperty "push works remotely (Applicative)"          $ prop_pushA
-    , testProperty "pop works remotely  (Applicative)"          $ prop_popA 
+    , testProperty "pop works remotely  (Applicative)"          $ prop_popA
     , testProperty "compare two remote applicative strategies"  $ testRunRemoteApplicative
     , testProperty "local alt with push (Applicative)"          $ testAltA
     ]
@@ -112,12 +112,12 @@ data RemoteApplicative = RemoteApplicative String (IORef [String] -> IORef [A] -
 
 instance Show RemoteMonad where
   show (RemoteMonad msg _) = "Remote Monad: " ++ msg
-  
+
 instance Show RemoteApplicative where
   show (RemoteApplicative msg _) = "Remote Applicative: " ++ msg
 
 instance Arbitrary RemoteMonad where
-  arbitrary = elements 
+  arbitrary = elements
     [ runMonadWeakPacket
     , runMonadStrongPacket
     , runMonadApplicativePacket
@@ -131,42 +131,42 @@ instance Arbitrary RemoteApplicative where
     , runApplicativeApplicativePacket
     , runApplicativeAlternativePacket
     ]
-    
+
 
 --- This is a complete enumeration of ways of building remote monads
-  
+
 runMonadWeakPacket :: RemoteMonad
-runMonadWeakPacket = RemoteMonad "MonadWeakPacket" 
-  $ \ tr ref -> M.runMonad (nat $ runWP tr ref)
+runMonadWeakPacket = RemoteMonad "MonadWeakPacket"
+  $ \ tr ref -> M.runMonad (wrapNT $ runWP tr ref)
 
 runMonadStrongPacket :: RemoteMonad
-runMonadStrongPacket = RemoteMonad "MonadStrongPacket" 
-  $ \ tr ref -> M.runMonad (nat $ runSP tr ref)
+runMonadStrongPacket = RemoteMonad "MonadStrongPacket"
+  $ \ tr ref -> M.runMonad (wrapNT $ runSP tr ref)
 
 runMonadApplicativePacket :: RemoteMonad
-runMonadApplicativePacket = RemoteMonad "MonadApplicativePacket" 
-  $ \ tr ref -> M.runMonad (nat $ runAppP tr ref)
+runMonadApplicativePacket = RemoteMonad "MonadApplicativePacket"
+  $ \ tr ref -> M.runMonad (wrapNT $ runAppP tr ref)
 
 runMonadAlternativePacket :: RemoteMonad
-runMonadAlternativePacket = RemoteMonad "MonadAlternativePacket" 
-  $ \ tr ref -> M.runMonad (nat $ runAltP tr ref)
+runMonadAlternativePacket = RemoteMonad "MonadAlternativePacket"
+  $ \ tr ref -> M.runMonad (wrapNT $ runAltP tr ref)
 
 -- Ways of building remote applicative
 runApplicativeWeakPacket :: RemoteApplicative
-runApplicativeWeakPacket = RemoteApplicative "ApplicativeWeakPacket" 
-  $ \ tr ref -> A.runApplicative (nat $ runWP tr ref)
+runApplicativeWeakPacket = RemoteApplicative "ApplicativeWeakPacket"
+  $ \ tr ref -> A.runApplicative (wrapNT $ runWP tr ref)
 
 runApplicativeStrongPacket :: RemoteApplicative
-runApplicativeStrongPacket = RemoteApplicative "ApplicativeStrongPacket" 
-  $ \ tr ref -> A.runApplicative (nat $ runSP tr ref)
+runApplicativeStrongPacket = RemoteApplicative "ApplicativeStrongPacket"
+  $ \ tr ref -> A.runApplicative (wrapNT $ runSP tr ref)
 
 runApplicativeApplicativePacket :: RemoteApplicative
-runApplicativeApplicativePacket = RemoteApplicative "ApplicativeApplicativePacket" 
-  $ \ tr ref -> A.runApplicative (nat $ runAppP tr ref)
+runApplicativeApplicativePacket = RemoteApplicative "ApplicativeApplicativePacket"
+  $ \ tr ref -> A.runApplicative (wrapNT $ runAppP tr ref)
 
 runApplicativeAlternativePacket :: RemoteApplicative
-runApplicativeAlternativePacket = RemoteApplicative "ApplicativeAlternativePacket" 
-  $ \ tr ref -> A.runApplicative (nat $ runAltP tr ref)
+runApplicativeAlternativePacket = RemoteApplicative "ApplicativeAlternativePacket"
+  $ \ tr ref -> A.runApplicative (wrapNT $ runAltP tr ref)
 
 
 ----------------------------------------------------------------
@@ -180,7 +180,7 @@ sendM (DeviceM _ _ f) m = f # m
 sendA :: DeviceA -> A.RemoteApplicative C P a -> IO a
 sendA (DeviceA _ _ f) m = f # m
 
-newDeviceM :: [A] 
+newDeviceM :: [A]
           -> RemoteMonad
           -> IO DeviceM
 newDeviceM xs (RemoteMonad _ f) = do
@@ -188,7 +188,7 @@ newDeviceM xs (RemoteMonad _ f) = do
   ref <- newIORef xs
   return $ DeviceM tr ref $ f tr ref
 
-newDeviceA :: [A] 
+newDeviceA :: [A]
           -> RemoteApplicative
           -> IO DeviceA
 newDeviceA xs (RemoteApplicative _ f) = do
@@ -204,10 +204,10 @@ readDeviceA (DeviceA _ ref _) = readIORef ref
 
 -- returns backwards, but is for cmp or debugging anyway
 traceDeviceM :: DeviceM -> IO [String]
-traceDeviceM (DeviceM tr _ _) = readIORef tr 
+traceDeviceM (DeviceM tr _ _) = readIORef tr
 
 traceDeviceA :: DeviceA -> IO [String]
-traceDeviceA (DeviceA tr _ _) = readIORef tr 
+traceDeviceA (DeviceA tr _ _) = readIORef tr
 ----------------------------------------------------------------
 
 newtype Remote a = Remote (M.RemoteMonad C P a)
@@ -235,8 +235,8 @@ instance Show (RemoteBind a) where
 ----------------------------------------------------------------
 
 arbitraryRemoteMonad' :: (CoArbitrary a, Arbitrary a) => [Gen (M.RemoteMonad C P a)] -> Int -> Gen (M.RemoteMonad C P a)
-arbitraryRemoteMonad' base 0 = oneof base 
-arbitraryRemoteMonad' base n = frequency 
+arbitraryRemoteMonad' base 0 = oneof base
+arbitraryRemoteMonad' base n = frequency
   [ (1 , oneof base)
   , (1 , do RemoteBind m k <- arbitraryBind (arbitraryRemoteMonad' base) n
             return (m >>= k)
@@ -261,8 +261,8 @@ arbitraryRemoteMonad' base n = frequency
   ]
 
 arbitraryRemoteApplicative' :: (CoArbitrary a, Arbitrary a) => [Gen (A.RemoteApplicative C P a)] -> Int -> Gen (A.RemoteApplicative C P a)
-arbitraryRemoteApplicative' base 0 = oneof base 
-arbitraryRemoteApplicative' base n = frequency 
+arbitraryRemoteApplicative' base 0 = oneof base
+arbitraryRemoteApplicative' base n = frequency
   [ (1 , oneof base)
   , (1 , do m1 <- arbitraryRemoteApplicativeA (n `div` 2)
             m2 <- arbitraryRemoteApplicative' base (n `div` 2)
@@ -307,10 +307,10 @@ arbitraryBind f n = oneof
        k  <- promote (`coarbitrary` f (n `div` 2))  -- look for a better way of doing this
        return $ RemoteBind m k
   , do m <- arbitraryRemoteMonadMaybeA (n `div` 2)
-       k  <- promote (`coarbitrary` f (n `div` 2)) 
+       k  <- promote (`coarbitrary` f (n `div` 2))
        return $ RemoteBind m k
   , do m <- arbitraryRemoteMonadA (n `div` 2)
-       k  <- promote (`coarbitrary` f (n `div` 2)) 
+       k  <- promote (`coarbitrary` f (n `div` 2))
        return $ RemoteBind m k
   ]
 
@@ -362,10 +362,10 @@ testRunRemoteMonad runMe1 runMe2 (Remote m) xs = monadicIO $ do
     r2   <- run $ sendM dev2 m
     tr2  <- run $ traceDeviceM dev2
     st2  <- run $ readDeviceM dev2
-    
+
 --    monitor $ collect $ (tr1,tr2)
     assert (r1 == r2 && tr1 == tr2 && st1 == st2)
-    
+
 testRunRemoteApplicative :: RemoteApplicative -> RemoteApplicative -> RemoteA A -> [A] -> Property
 testRunRemoteApplicative runMe1 runMe2 (RemoteA m) xs = monadicIO $ do
     dev1 <- run $ newDeviceA xs runMe1
@@ -377,10 +377,10 @@ testRunRemoteApplicative runMe1 runMe2 (RemoteA m) xs = monadicIO $ do
     r2   <- run $ sendA dev2 m
     tr2  <- run $ traceDeviceA dev2
     st2  <- run $ readDeviceA dev2
-    
+
 --    monitor $ collect $ (tr1,tr2)
     assert (r1 == r2 && tr1 == tr2 && st1 == st2)
-    
+
 -- Check remote monad laws
 testRemoteMonadBindLaw :: RemoteMonad -> [A] -> Property
 testRemoteMonadBindLaw runMe xs = monadicIO $ do
@@ -422,7 +422,7 @@ testAltM runMe xs x y z = monadicIO $ do
     ys1  <- run $ readDeviceM  dev1
     let assert1= (ys1 == (y:x:xs))
     -----------------------------
-    
+
     let m3 = do () <- M.command (Push x)
                 () <- empty
                 M.command (Push y)
@@ -436,7 +436,7 @@ testAltM runMe xs x y z = monadicIO $ do
     let m5 = do M.command (Push x)
                 M.command (Push y)
                 M.command (Push z)
-    let m6 = empty 
+    let m6 = empty
     dev3 <- run $ newDeviceM xs runMe
     ()   <- run $ sendM dev3 (m5 <|> m6)
     ys3  <- run $ readDeviceM dev3
@@ -453,7 +453,7 @@ testAltA runMe xs x y z = monadicIO $ do
     ys1  <- run $ readDeviceA  dev1
     let assert1= (ys1 == (y:x:xs))
     -----------------------------
-    
+
     let m3 = A.command (Push x) *> empty *> A.command (Push y)
     let m4 = A.command (Push z)
     dev2 <- run $ newDeviceA xs runMe
@@ -465,7 +465,7 @@ testAltA runMe xs x y z = monadicIO $ do
     let m5 = A.command (Push x) *>
              A.command (Push y) *>
              A.command (Push z)
-    let m6 = empty 
+    let m6 = empty
     dev3 <- run $ newDeviceA xs runMe
     ()   <- run $ sendA dev3 (m5 <|> m6)
     ys3   <- run $ readDeviceA dev3
@@ -493,10 +493,10 @@ testAltArbitrary runMe xs = monadicIO $ do
    y3   <- run $ readDeviceM dev3
    y4   <- run $ readDeviceM dev4
 
-   assert (  r1 == r2 
-          && r2 == r3 
-          && r3 == r4 
-          && y1 == y2 
+   assert (  r1 == r2
+          && r2 == r3
+          && r3 == r4
+          && y1 == y2
           && y2 == y3
           && y3 == y4
           )
