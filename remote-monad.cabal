@@ -70,6 +70,8 @@ library
   other-modules:
                        Control.Remote.Monad.Packet.Transport
                        Control.Remote.Monad.Types
+                       Control.Remote.Applicative.Types
+                       Control.Remote.Types
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
   build-depends:       base >=4.7 && < 5
                      , exceptions             >= 0.8 && < 0.9
