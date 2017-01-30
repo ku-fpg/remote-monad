@@ -22,11 +22,13 @@ import           Control.Natural (wrapNT,(:~>),(#))
 import           Control.Applicative
 
 import qualified Control.Remote.Monad as M
-import           Control.Remote.Monad.Packet.Applicative as AP
-import qualified Control.Remote.Monad.Packet.Weak as WP
-import qualified Control.Remote.Monad.Packet.Alternative as Alt
-import qualified Control.Remote.Monad.Packet.Strong as SP
 import qualified Control.Remote.Applicative as A
+
+import qualified Control.Remote.Packet.Alternative as Alt
+import           Control.Remote.Packet.Applicative as AP
+import qualified Control.Remote.Packet.If as IF
+import qualified Control.Remote.Packet.Strong as SP
+import qualified Control.Remote.Packet.Weak as WP
 
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
@@ -103,6 +105,21 @@ runAltP _ _ (Alt.Pure a)         = pure a
 runAltP tr ref (Alt.Zip f g h)   = f <$> runAltP tr ref g <*> runAltP tr ref h
 runAltP tr ref (Alt.Alt g h)     = (runAltP tr ref g) <|> (runAltP tr ref h)
 runAltP _  _   (Alt.Empty)       = empty
+
+runIfP :: IORef [String] -> IORef [A] -> IF.IfPacket C P a -> IO a
+runIfP tr ref (IF.Command   c) = runWP tr ref (WP.Command c)
+runIfP tr ref (IF.Procedure p) = runWP tr ref (WP.Procedure p)
+runIfP _ _    (IF.Pure a)      = pure a
+runIfP tr ref (IF.Zip f g h)   = f <$> runIfP tr ref g <*> runIfP tr ref h
+runIfP tr ref (IF.Alt g h)     = (runIfP tr ref g) <|> (runIfP tr ref h)
+runIfP _  _   (IF.Empty)       = empty
+runIfp tr ref (IF.If c a b)    =do
+                             c' <- runIfP tr ref c
+                             if c'
+                               then
+                                 runIfP tr ref a
+                               else
+                                 runIfP tr ref b
 ----------------------------------------------------------------
 -- The different ways of running remote monads.
 
@@ -130,6 +147,7 @@ instance Arbitrary RemoteApplicative where
     , runApplicativeStrongPacket
     , runApplicativeApplicativePacket
     , runApplicativeAlternativePacket
+    , runApplicativeIfPacket
     ]
 
 
@@ -168,6 +186,9 @@ runApplicativeAlternativePacket :: RemoteApplicative
 runApplicativeAlternativePacket = RemoteApplicative "ApplicativeAlternativePacket"
   $ \ tr ref -> A.runApplicative (wrapNT $ runAltP tr ref)
 
+runApplicativeIfPacket :: RemoteApplicative
+runApplicativeIfPacket = RemoteApplicative "ApplicativeIfPacket"
+ $ \ tr ref -> A.runApplicative (wrapNT $ runIfP tr ref)
 
 ----------------------------------------------------------------
 

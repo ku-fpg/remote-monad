@@ -6,10 +6,10 @@ module Main where
 
 import Control.Natural
 import Control.Remote.Monad
-import Control.Remote.Monad.Packet.Weak as WP
-import Control.Remote.Monad.Packet.Strong as SP
-import Control.Remote.Monad.Packet.Applicative as AP
-import Control.Remote.Monad.Packet.Alternative as Alt
+import Control.Remote.Packet.Weak as WP
+import Control.Remote.Packet.Strong as SP
+import Control.Remote.Packet.Applicative as AP
+import Control.Remote.Packet.Alternative as Alt
 import Control.Applicative
 import Control.Monad.Catch
 import Control.Exception hiding (catch)
@@ -70,6 +70,26 @@ runAlt (Alt g h)       = do
            return a
 runAlt (Alt.Empty) = empty
 -----------------------------------------------------------
+runIf :: IfPacket Command Procedure a -> IO a
+runIf (IF.Command (Say s)) = print s
+runIf (IF.Procedure Temperature) = do
+                                  putStrLn "Temp Call"
+                                  return 42
+runIf (IF.Zip f g h) = f <$> runAlt g <*> runAlt h
+runIf (IF.Pure a)    = return a
+runIf (IF.Alt g h)       = do
+           putStrLn "Alternative"
+           a <-(runAlt g) <|> (runAlt h)
+           putStrLn "End Alternative"
+           return a
+runIf (IF.Empty) = empty
+runIf (IF.If c a b) = do
+     c' <- runIf c
+     if c' then
+       runIf a
+       else
+       runIf b
+----------------------------------------------------------
 sendWeak :: RemoteMonad Command Procedure a -> IO a
 sendWeak = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runWP pkt)
 
@@ -81,6 +101,9 @@ sendApp = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runAP pkt)
 
 sendAlt :: RemoteMonad Command Procedure a -> IO a
 sendAlt = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runAlt pkt)
+
+sendIf :: RemoteMonad Command Procedure a -> IO a
+sendIf = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runIf pkt)
 ---------------------------------------------------------
 
 main :: IO ()
@@ -96,6 +119,9 @@ main = do
 
         putStrLn "\nAltSend\n"
         runTest $ wrapNT sendAlt
+
+        putStrLn "\nIfSend\n"
+        runTest $ wrapNT sendIf
 
 --Run Test Suite
 runTest :: (RemoteMonad Command Procedure :~> IO)-> IO()

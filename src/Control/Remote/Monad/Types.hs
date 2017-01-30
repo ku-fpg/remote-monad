@@ -34,7 +34,8 @@ data RemoteMonad  (cmd:: *) (proc:: * -> *) a where
    Empty'      :: RemoteMonad cmd proc a 
    Throw       :: Exception e => e -> RemoteMonad cmd proc a
    Catch       :: Exception e => RemoteMonad cmd proc a -> (e -> RemoteMonad cmd proc a)-> RemoteMonad cmd proc a
-  
+   If          :: RemoteMonad cmd proc Bool -> RemoteMonad cmd proc a ->
+                  RemoteMonad cmd proc a -> RemoteMonad cmd proc a
 instance  Functor (RemoteMonad cmd proc) where
   fmap f m = pure f <*> m
 

@@ -5,7 +5,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 {-|
-Module:      Control.Remote.Monad.Packet.Weak
+Module:      Control.Remote.Packet.Weak
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,9 +13,9 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad.Packet.Weak where
+module Control.Remote.Packet.Weak where
 
-import Control.Remote.Monad.Packet.Transport 
+import Control.Remote.Packet.Transport 
 
 -- | A Weak Packet, that can encode a command or a procedure.
 

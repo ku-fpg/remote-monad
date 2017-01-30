@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.Monad.Packet.Weak
+Module:      Control.Remote.Monad
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -38,10 +38,11 @@ import           Control.Applicative
 
 import           Control.Remote.Applicative as A
 import           Control.Remote.Applicative.Types as A
-import           Control.Remote.Monad.Packet.Applicative as AP
-import qualified Control.Remote.Monad.Packet.Alternative as Alt
-import           Control.Remote.Monad.Packet.Weak as Weak
-import           Control.Remote.Monad.Packet.Strong as Strong
+import           Control.Remote.Packet.Applicative as AP
+import qualified Control.Remote.Packet.Alternative as Alt
+import qualified Control.Remote.Packet.If as IF
+import           Control.Remote.Packet.Weak as Weak
+import           Control.Remote.Packet.Strong as Strong
 import           Control.Remote.Monad.Types as T
 import           Control.Remote.Types
 
@@ -54,6 +55,9 @@ command = Appl . A.command
 -- | promote a procedure into the remote monad
 procedure :: p a -> RemoteMonad c p a
 procedure = Appl . A.procedure
+
+--ifRemote :: RemoteMonad c p a
+--ifRemote = T.If
 
 loop :: forall a c p l . (a-> Bool) -> RemoteMonad c p a -> RemoteMonad c p a
 loop f m = do  res <- m
@@ -80,6 +84,9 @@ instance RunMonad ApplicativePacket where
 instance RunMonad Alt.AlternativePacket where
   runMonad = runAlternativeMonad
 
+--instance RunMonad IF.IfPacket where
+--  runMonad = runIfMonad
+
 -- | This is a remote monad combinator, that takes an implementation
 --   of a remote applicative, splits the monad into applicatives
 --   without any merge stragegy, and uses the remote applicative.
@@ -97,8 +104,7 @@ runMonadSkeleton f = wrapNT $ \ case
                          )
   Empty'    -> throwM RemoteEmptyException
   Throw e   -> throwM e
-  Catch m h -> catch (runMonadSkeleton f # m)  ((runMonadSkeleton f #) . h)
-
+  Catch m h -> catch (runMonadSkeleton f # m)  ((runMonadSkeleton f #) . h) 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
 runWeakMonad :: (MonadCatch m) => (WeakPacket c p :~> m) -> (RemoteMonad c p :~> m)
@@ -271,6 +277,3 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
     superApplicative (A.Procedure p) = Nothing
     superApplicative (A.Ap g h)      = (superApplicative g) <*> (superApplicative h)
     superApplicative (A.Alt g h)      = (superApplicative g) <|> (superApplicative h)
-
-
-

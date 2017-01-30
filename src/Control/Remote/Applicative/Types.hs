@@ -29,10 +29,14 @@ import            Control.Monad.Trans.Class
 data RemoteApplicative (cmd:: *) (proc:: * -> *) a where 
    Command   :: cmd   -> RemoteApplicative cmd proc () 
    Procedure :: proc a -> RemoteApplicative cmd proc a
-   Alt       :: RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a
-   Ap        :: RemoteApplicative cmd proc (a -> b) -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc b
+   Alt       :: RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a
+             -> RemoteApplicative cmd proc a
+   Ap        :: RemoteApplicative cmd proc (a -> b) -> RemoteApplicative cmd proc a
+             -> RemoteApplicative cmd proc b
    Pure      :: a   -> RemoteApplicative cmd proc a  
    Empty     :: RemoteApplicative cmd proc a
+   If        :: RemoteApplicative cmd proc Bool -> RemoteApplicative cmd proc a
+             -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a
   
 instance Functor (RemoteApplicative cmd proc) where
   fmap f g = pure f <*> g

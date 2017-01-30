@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-|
-Module:      Control.Remote.Monad.Packet
+Module:      Control.Remote.Packet
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -11,17 +11,17 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad.Packet
+module Control.Remote.Packet
   (
     Promote(..)
   , promoteToStrong
   , promoteToApplicative
   , promoteToAlternative
   ) where
-import qualified Control.Remote.Monad.Packet.Weak as Weak
-import qualified Control.Remote.Monad.Packet.Strong as Strong
-import qualified Control.Remote.Monad.Packet.Applicative as A
-import qualified Control.Remote.Monad.Packet.Alternative as Alt
+import qualified Control.Remote.Packet.Weak as Weak
+import qualified Control.Remote.Packet.Strong as Strong
+import qualified Control.Remote.Packet.Applicative as A
+import qualified Control.Remote.Packet.Alternative as Alt
 import           Control.Natural
 import           Control.Applicative
 

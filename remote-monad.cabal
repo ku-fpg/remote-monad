@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                remote-monad
-version:             0.3
+version:             0.4
 synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
 description:
   An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
@@ -60,15 +60,16 @@ source-repository head
 
 library
   exposed-modules:
-                       Control.Remote.Monad.Packet.Alternative
-                       Control.Remote.Monad.Packet.Applicative
-                       Control.Remote.Monad.Packet.Strong
-                       Control.Remote.Monad.Packet.Weak
-                       Control.Remote.Monad.Packet
+                       Control.Remote.Packet.Alternative
+                       Control.Remote.Packet.Applicative
+                       Control.Remote.Packet.If
+                       Control.Remote.Packet.Strong
+                       Control.Remote.Packet.Weak
+                       Control.Remote.Packet
                        Control.Remote.Applicative
                        Control.Remote.Monad
   other-modules:
-                       Control.Remote.Monad.Packet.Transport
+                       Control.Remote.Packet.Transport
                        Control.Remote.Monad.Types
                        Control.Remote.Applicative.Types
                        Control.Remote.Types
@@ -88,7 +89,7 @@ test-suite remote-monad-example
   build-depends:       base                   >= 4.7 && < 5
                      , exceptions             >= 0.8 && < 0.9
                      , natural-transformation >= 0.4 && < 0.5
-                     , remote-monad           == 0.3
+                     , remote-monad           == 0.4
   hs-source-dirs:      examples
   default-language:    Haskell2010
   ghc-options:         -Wall
@@ -99,7 +100,7 @@ test-suite remote-monad-properties
   build-depends:       base                   >= 4.7 && < 5
                      , containers             >= 0.1 && < 0.6
                      , natural-transformation >= 0.4 && < 0.5
-                     , remote-monad           == 0.3
+                     , remote-monad           == 0.4
                      , QuickCheck             >= 2.8 && < 2.10
                      , quickcheck-instances   >= 0.1 && < 0.4
                      , tasty                  >= 0.8 && < 0.12
@@ -113,7 +114,7 @@ benchmark remote-monad-bench
   hs-source-dirs:      . criterion
   main-is:             Bench.hs
   build-depends:       base
-                     , remote-monad           == 0.3
+                     , remote-monad           == 0.4
                      , natural-transformation >= 0.4 && < 0.5
                      , criterion
   default-language:    Haskell2010

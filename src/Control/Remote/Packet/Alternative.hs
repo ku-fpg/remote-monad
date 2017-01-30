@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.Monad.Packet.Alternative
+Module:      Control.Remote.Packet.Alternative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad.Packet.Alternative
+module Control.Remote.Packet.Alternative
   ( -- * The remote applicative
     AlternativePacket(..)
     -- * Utility
@@ -25,7 +25,7 @@ import Control.Applicative
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
-import qualified Control.Remote.Monad.Packet.Strong as Strong
+import qualified Control.Remote.Packet.Strong as Strong
 import Control.Natural
 
 
