@@ -84,8 +84,8 @@ instance RunMonad ApplicativePacket where
 instance RunMonad Alt.AlternativePacket where
   runMonad = runAlternativeMonad
 
---instance RunMonad IF.IfPacket where
---  runMonad = runIfMonad
+instance RunMonad IF.IfPacket where
+  runMonad = runIfMonad
 
 -- | This is a remote monad combinator, that takes an implementation
 --   of a remote applicative, splits the monad into applicatives
@@ -263,6 +263,59 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
     pk (A.Ap g h)      = (pk g) <*> (pk h)
     pk (A.Alt g h)     = (pk g) <|> (pk h)
 
+    -- g is a function that will take the current state as input
+    discharge :: forall a f . Applicative f => (f () ->RemoteApplicative c p a )-> StateT (f ()) m a
+    discharge g = do
+                 ap' <- get
+                 put (pure ()) -- clear state
+                 lift $ rf $ pk $ g ap'
+
+    superApplicative :: RemoteApplicative c p a -> Maybe a
+    superApplicative (A.Empty)       = Nothing
+    superApplicative (A.Pure a)      = pure a
+    superApplicative (A.Command c)   = pure ()
+    superApplicative (A.Procedure p) = Nothing
+    superApplicative (A.Ap g h)      = (superApplicative g) <*> (superApplicative h)
+    superApplicative (A.Alt g h)      = (superApplicative g) <|> (superApplicative h)
+
+
+runIfMonad :: forall m c p . (MonadCatch m) => (IF.IfPacket c p :~> m) -> (RemoteMonad c p :~> m)
+runIfMonad (NT rf) = wrapNT $ \ p -> do
+   (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ())
+   () <- rf $ pk h
+   case r of
+      Nothing -> throwM RemoteEmptyException
+      Just v -> return v
+
+   where
+    go2 :: forall a . RemoteMonad c p a -> MaybeT (StateT (RemoteApplicative  c p ()) m) a
+    go2 (Appl app)   = lift $ go app
+    go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
+    go2 (Ap' g h)    = go2 g <*> go2 h
+    go2 (Alt' m1 m2) = go2 m1 <|> go2 m2
+    go2 Empty'       = empty
+    go2 (Throw e)    = lift $ do
+        ()<- discharge id
+        throwM e
+    go2 (Catch m h) = catch (go2 m) (go2 . h)
+
+    go :: RemoteApplicative c p a -> StateT (RemoteApplicative c p ()) m a
+    go ap = case superApplicative ap of
+               Nothing -> do
+                           discharge $ \ ap' -> ap' *> ap
+               Just a  -> do
+                             modify (\ap' -> ap' <* ap)
+                             return a
+
+    pk :: forall a . RemoteApplicative c p a -> IF.IfPacket c p a
+    pk (A.Empty)       = empty
+    pk (A.Pure a)      = pure a
+    pk (A.Command c)   = (IF.Command c)
+    pk (A.Procedure p) = (IF.Procedure p)
+    pk (A.Ap g h)      = (pk g) <*> (pk h)
+    pk (A.Alt g h)     = (pk g) <|> (pk h)
+    pk (A.If c g h)      = IF.If (pk c) (pk g) (pk h)
+    
     -- g is a function that will take the current state as input
     discharge :: forall a f . Applicative f => (f () ->RemoteApplicative c p a )-> StateT (f ()) m a
     discharge g = do

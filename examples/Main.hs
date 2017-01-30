@@ -103,8 +103,8 @@ sendApp = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runAP pkt)
 sendAlt :: RemoteMonad Command Procedure a -> IO a
 sendAlt = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runAlt pkt)
 
---sendIf :: RemoteMonad Command Procedure a -> IO a
---sendIf = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runIf pkt)
+sendIf :: RemoteMonad Command Procedure a -> IO a
+sendIf = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runIf pkt)
 ---------------------------------------------------------
 
 main :: IO ()
@@ -121,8 +121,8 @@ main = do
         putStrLn "\nAltSend\n"
         runTest $ wrapNT sendAlt
 
---        putStrLn "\nIfSend\n"
---        runTest $ wrapNT sendIf
+        putStrLn "\nIfSend\n"
+        runTest $ wrapNT sendIf
 
 --Run Test Suite
 runTest :: (RemoteMonad Command Procedure :~> IO)-> IO()
