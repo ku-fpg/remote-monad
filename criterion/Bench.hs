@@ -7,11 +7,11 @@ import Data.List (foldl')
 
 import           Control.Natural (wrapNT,unwrapNT,(:~>),(#))
 
-import qualified Control.Remote.Monad as M
-import           Control.Remote.Monad.Packet.Applicative as AP
-import qualified Control.Remote.Monad.Packet.Weak as WP
-import qualified Control.Remote.Monad.Packet.Strong as SP
-import qualified Control.Remote.Applicative as A
+import qualified Control.WithAsync.Remote.Monad as M
+import           Control.WithAsync.Remote.Monad.Packet.Applicative as AP
+import qualified Control.WithAsync.Remote.Monad.Packet.Weak as WP
+import qualified Control.WithAsync.Remote.Monad.Packet.Strong as SP
+import qualified Control.WithAsync.Remote.Applicative as A
 
 import System.Environment
 import Data.IORef
