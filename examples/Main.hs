@@ -5,11 +5,11 @@
 module Main where
 
 import Control.Natural
-import Control.Remote.Monad
-import Control.Remote.Monad.Packet.Weak as WP
-import Control.Remote.Monad.Packet.Strong as SP
-import Control.Remote.Monad.Packet.Applicative as AP
-import Control.Remote.Monad.Packet.Alternative as Alt
+import Control.Remote.WithAsync.Monad
+import Control.Remote.WithAsync.Packet.Weak as WP
+import Control.Remote.WithAsync.Packet.Strong as SP
+import Control.Remote.WithAsync.Packet.Applicative as AP
+import Control.Remote.WithAsync.Packet.Alternative as Alt
 import Control.Applicative
 import Control.Monad.Catch
 import Control.Exception hiding (catch)

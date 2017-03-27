@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                remote-monad
-version:             0.3
+version:             0.4
 synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
 description:
   An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
@@ -14,8 +14,8 @@ description:
     module Main where
     .
     import Control.Natural (nat, (#))
-    import Control.Remote.Monad
-    import Control.Remote.Monad.Packet.Weak
+    import Control.Remote.WithAsync.Monad
+    import Control.Remote.WithAsync.Monad.Packet.Weak
     .
     data Command :: * where
     &#32;&#32;Say :: String -> Command
@@ -60,16 +60,28 @@ source-repository head
 
 library
   exposed-modules:
-                       Control.Remote.Monad.Packet.Alternative
-                       Control.Remote.Monad.Packet.Applicative
-                       Control.Remote.Monad.Packet.Strong
-                       Control.Remote.Monad.Packet.Weak
-                       Control.Remote.Monad.Packet
-                       Control.Remote.Applicative
-                       Control.Remote.Monad
+                       Control.Remote.WithoutAsync.Packet.Alternative
+                       Control.Remote.WithoutAsync.Packet.Applicative
+                       Control.Remote.WithoutAsync.Packet.Weak
+                       Control.Remote.WithoutAsync.Packet
+                       Control.Remote.WithoutAsync.Packet.Transport
+                       Control.Remote.WithoutAsync.Applicative
+                       Control.Remote.WithoutAsync.Applicative.Types
+                       Control.Remote.WithoutAsync.Monad
+                       Control.Remote.WithoutAsync.Monad.Types
+                       Control.Remote.WithoutAsync.Util
+
+                       Control.Remote.WithAsync.Packet.Alternative
+                       Control.Remote.WithAsync.Packet.Applicative
+                       Control.Remote.WithAsync.Packet.Strong
+                       Control.Remote.WithAsync.Packet.Weak
+                       Control.Remote.WithAsync.Packet
+                       Control.Remote.WithAsync.Packet.Transport
+                       Control.Remote.WithAsync.Applicative
+                       Control.Remote.WithAsync.Monad
+                       Control.Remote.WithAsync.Monad.Types
+
   other-modules:
-                       Control.Remote.Monad.Packet.Transport
-                       Control.Remote.Monad.Types
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
   build-depends:       base >=4.7 && < 5
                      , exceptions             >= 0.8 && < 0.9
@@ -86,7 +98,7 @@ test-suite remote-monad-example
   build-depends:       base                   >= 4.7 && < 5
                      , exceptions             >= 0.8 && < 0.9
                      , natural-transformation >= 0.4 && < 0.5
-                     , remote-monad           == 0.3
+                     , remote-monad           == 0.4
   hs-source-dirs:      examples
   default-language:    Haskell2010
   ghc-options:         -Wall
@@ -97,7 +109,7 @@ test-suite remote-monad-properties
   build-depends:       base                   >= 4.7 && < 5
                      , containers             >= 0.1 && < 0.6
                      , natural-transformation >= 0.4 && < 0.5
-                     , remote-monad           == 0.3
+                     , remote-monad           == 0.4
                      , QuickCheck             >= 2.8 && < 2.10
                      , quickcheck-instances   >= 0.1 && < 0.4
                      , tasty                  >= 0.8 && < 0.12
@@ -111,7 +123,7 @@ benchmark remote-monad-bench
   hs-source-dirs:      . criterion
   main-is:             Bench.hs
   build-depends:       base
-                     , remote-monad           == 0.3
+                     , remote-monad           == 0.4
                      , natural-transformation >= 0.4 && < 0.5
                      , criterion
   default-language:    Haskell2010

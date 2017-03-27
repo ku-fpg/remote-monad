@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.Applicative
+Module:      Control.Remote.WithAsync.Applicative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Applicative
+module Control.Remote.WithAsync.Applicative
   ( -- * The remote applicative
     RemoteApplicative
     -- * The primitive lift functions
@@ -33,13 +33,13 @@ import Control.Monad.Trans.State.Strict
 import Control.Monad.Identity
 import Control.Category ((>>>))
 
-import           Control.Remote.Monad.Packet.Applicative as A
-import           Control.Remote.Monad.Packet.Alternative as Alt
-import qualified Control.Remote.Monad.Packet.Strong as Strong
-import           Control.Remote.Monad.Packet.Strong (StrongPacket, HStrongPacket(..))
-import qualified Control.Remote.Monad.Packet.Weak as Weak
-import           Control.Remote.Monad.Packet.Weak (WeakPacket)
-import           Control.Remote.Monad.Types as T
+import           Control.Remote.WithAsync.Packet.Applicative as A
+import           Control.Remote.WithAsync.Packet.Alternative as Alt
+import qualified Control.Remote.WithAsync.Packet.Strong as Strong
+import           Control.Remote.WithAsync.Packet.Strong (StrongPacket, HStrongPacket(..))
+import qualified Control.Remote.WithAsync.Packet.Weak as Weak
+import           Control.Remote.WithAsync.Packet.Weak (WeakPacket)
+import           Control.Remote.WithAsync.Monad.Types as T
 import           Control.Natural
 import           Control.Applicative
 import           Control.Monad.Catch

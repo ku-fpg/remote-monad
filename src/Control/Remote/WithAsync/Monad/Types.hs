@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.Applicative
+Module:      Control.Remote.WithAsync.Applicative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad.Types 
+module Control.Remote.WithAsync.Monad.Types 
   ( RemoteMonad(..)
   , RemoteApplicative(..)
   , RemoteMonadException(..)

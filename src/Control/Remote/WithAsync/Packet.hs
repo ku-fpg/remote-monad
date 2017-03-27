@@ -11,17 +11,17 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad.Packet
+module Control.Remote.WithAsync.Packet
   (
     Promote(..)
   , promoteToStrong
   , promoteToApplicative
   , promoteToAlternative
   ) where
-import qualified Control.Remote.Monad.Packet.Weak as Weak
-import qualified Control.Remote.Monad.Packet.Strong as Strong
-import qualified Control.Remote.Monad.Packet.Applicative as A
-import qualified Control.Remote.Monad.Packet.Alternative as Alt
+import qualified Control.Remote.WithAsync.Packet.Weak as Weak
+import qualified Control.Remote.WithAsync.Packet.Strong as Strong
+import qualified Control.Remote.WithAsync.Packet.Applicative as A
+import qualified Control.Remote.WithAsync.Packet.Alternative as Alt
 import           Control.Natural
 import           Control.Applicative
 

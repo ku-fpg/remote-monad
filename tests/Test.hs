@@ -21,12 +21,12 @@ module Main (main) where
 import           Control.Natural (wrapNT,(:~>),(#))
 import           Control.Applicative
 
-import qualified Control.Remote.Monad as M
-import           Control.Remote.Monad.Packet.Applicative as AP
-import qualified Control.Remote.Monad.Packet.Weak as WP
-import qualified Control.Remote.Monad.Packet.Alternative as Alt
-import qualified Control.Remote.Monad.Packet.Strong as SP
-import qualified Control.Remote.Applicative as A
+import qualified Control.Remote.WithAsync.Monad as M
+import           Control.Remote.WithAsync.Packet.Applicative as AP
+import qualified Control.Remote.WithAsync.Packet.Weak as WP
+import qualified Control.Remote.WithAsync.Packet.Alternative as Alt
+import qualified Control.Remote.WithAsync.Packet.Strong as SP
+import qualified Control.Remote.WithAsync.Applicative as A
 
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()

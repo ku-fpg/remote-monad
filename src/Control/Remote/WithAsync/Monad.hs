@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.Monad
+module Control.Remote.WithAsync.Monad
   ( -- * The remote monad
     RemoteMonad
   , RemoteMonadException(..)
@@ -32,12 +32,12 @@ module Control.Remote.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
-import qualified Control.Remote.Applicative as A
-import           Control.Remote.Monad.Packet.Applicative as A
-import qualified Control.Remote.Monad.Packet.Alternative as Alt
-import           Control.Remote.Monad.Packet.Weak as Weak
-import           Control.Remote.Monad.Packet.Strong as Strong
-import           Control.Remote.Monad.Types as T
+import qualified Control.Remote.WithAsync.Applicative as A
+import           Control.Remote.WithAsync.Packet.Applicative as A
+import qualified Control.Remote.WithAsync.Packet.Alternative as Alt
+import           Control.Remote.WithAsync.Packet.Weak as Weak
+import           Control.Remote.WithAsync.Packet.Strong as Strong
+import           Control.Remote.WithAsync.Monad.Types as T
 import           Control.Applicative
 
 import Control.Natural
