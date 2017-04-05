@@ -22,6 +22,7 @@ module Control.Remote.WithoutAsync.Applicative
   , RunApplicative(runApplicative)
   , runWeakApplicative
   , runApplicativeApplicative
+  , runQueryApplicative
   , runAlternativeApplicative
   ) where
 
@@ -33,6 +34,7 @@ import Control.Category ((>>>))
 
 import           Control.Remote.WithoutAsync.Packet.Applicative as A
 import           Control.Remote.WithoutAsync.Packet.Alternative as Alt
+import           Control.Remote.WithoutAsync.Packet.Query as Query
 import qualified Control.Remote.WithoutAsync.Packet.Weak as Weak
 import           Control.Remote.WithoutAsync.Packet.Weak (WeakPacket)
 import           Control.Remote.WithoutAsync.Applicative.Types as T
@@ -61,6 +63,9 @@ instance RunApplicative ApplicativePacket where
 
 instance RunApplicative AlternativePacket where
   runApplicative = runAlternativeApplicative
+
+instance RunApplicative QueryPacket where
+  runApplicative = runQueryApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
 runWeakApplicative :: forall m p . (MonadThrow m) => (WeakPacket p :~> m) -> (RemoteApplicative p :~> m)
@@ -96,7 +101,21 @@ runApplicativeApplicative (NT rf) = wrapNT (go4 . go3)
     go4 (Throw' pkt) = do () <- rf pkt
                           throwM RemoteEmptyException
 
+-- | The applicative remote applicative, that is the identity function.
+runQueryApplicative :: forall m p . (MonadThrow m) => (QueryPacket p :~> m) -> (RemoteApplicative p :~> m)
+runQueryApplicative (NT rf) = wrapNT (go4 . go3)
+  where
+    go3 :: forall a . RemoteApplicative p a -> Wrapper (QueryPacket p) a
+    go3 (T.Empty)       = empty   --uses Throw'
+    go3 (T.Pure a)      = pure a
+    go3 (T.Procedure p) = Value (QueryPacket (A.Procedure p))
+    go3 (T.Ap g h)      = (go3 g) <*> (go3 h)
+    go3 (T.Alt g h)     = (go3 g) <|> (go3 h)
 
+    go4 :: forall a . Wrapper (QueryPacket p) a -> m a
+    go4 (Value pkt)  = rf pkt
+    go4 (Throw' pkt) = do () <- rf pkt
+                          throwM RemoteEmptyException
 
 runAlternativeApplicative :: forall m p . (MonadThrow m) => (AlternativePacket p :~> m) -> (RemoteApplicative p :~> m)
 runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p

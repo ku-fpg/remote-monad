@@ -62,6 +62,7 @@ library
   exposed-modules:
                        Control.Remote.WithoutAsync.Packet.Alternative
                        Control.Remote.WithoutAsync.Packet.Applicative
+                       Control.Remote.WithoutAsync.Packet.Query
                        Control.Remote.WithoutAsync.Packet.Weak
                        Control.Remote.WithoutAsync.Packet
                        Control.Remote.WithoutAsync.Packet.Transport
