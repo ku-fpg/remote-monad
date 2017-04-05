@@ -38,11 +38,13 @@ import qualified Control.Remote.WithAsync.Packet.Alternative as Alt
 import           Control.Remote.WithAsync.Packet.Weak as Weak
 import           Control.Remote.WithAsync.Packet.Strong as Strong
 import           Control.Remote.WithAsync.Monad.Types as T
-import           Control.Applicative
+import           Control.Remote.WithAsync.Applicative.Types as AT
+import           Control.Remote.WithAsync.Util
 
-import Control.Natural
-import Control.Monad.Catch
-import Control.Monad.Trans.Maybe
+import           Control.Applicative
+import           Control.Natural
+import           Control.Monad.Catch
+import           Control.Monad.Trans.Maybe
 
 
 -- | promote a command into the remote monad
@@ -128,17 +130,17 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
     go :: forall a . RemoteApplicative c p a -> MaybeT (StateT (HStrongPacket c p) m) a
-    go (T.Pure a)      = return a
-    go (T.Command c)   = lift $ do
+    go (AT.Pure a)      = return a
+    go (AT.Command c)   = lift $ do
         modify (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command c))
         return ()
-    go (T.Procedure p) = lift $ do
+    go (AT.Procedure p) = lift $ do
         HStrongPacket cs <- get
         put (HStrongPacket id)
         r2 <- lift $ rf $ cs $ Strong.Procedure $ p
         return $ r2
-    go (T.Ap g h) = go g <*> go h
-    go (T.Alt g h) = go g <|> go h
+    go (AT.Ap g h) = go g <*> go h
+    go (AT.Alt g h) = go g <|> go h
 
 -- | The is the strong applicative strong remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible,
@@ -165,13 +167,13 @@ runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-    go :: forall a . T.RemoteApplicative c p a -> Wrapper (RemoteApplicative c p) a
-    go (T.Empty) = empty
-    go (T.Pure a) = pure a
-    go (T.Command c) = Value (T.Command c)
-    go (T.Procedure p) = Value (T.Procedure p)
-    go (T.Ap g h)      = (go g) <*> (go h)
-    go (T.Alt g h)     = (go g) <|> (go h)
+    go :: forall a . AT.RemoteApplicative c p a -> Wrapper (RemoteApplicative c p) a
+    go (AT.Empty) = empty
+    go (AT.Pure a) = pure a
+    go (AT.Command c) = Value (AT.Command c)
+    go (AT.Procedure p) = Value (AT.Procedure p)
+    go (AT.Ap g h)      = (go g) <*> (go h)
+    go (AT.Alt g h)     = (go g) <|> (go h)
 
     -- g is a function that will take the current state as input
     discharge :: forall a f . Applicative f => (f () ->RemoteApplicative c p a )-> StateT (f ()) m a
@@ -198,19 +200,19 @@ runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
 
     -- Do we know the answer? Nothing  =  we need to get it
     superApplicative :: RemoteApplicative c p a -> Maybe a
-    superApplicative (T.Pure a)      = pure a
-    superApplicative (T.Command   c) = Just ()
-    superApplicative (T.Procedure p) = Nothing
-    superApplicative (T.Ap g h)      =  (superApplicative g) <*> (superApplicative h)
-    superApplicative (T.Alt g h)     = Nothing
-    superApplicative (T.Empty)       = Nothing
+    superApplicative (AT.Pure a)      = pure a
+    superApplicative (AT.Command   c) = Just ()
+    superApplicative (AT.Procedure p) = Nothing
+    superApplicative (AT.Ap g h)      =  (superApplicative g) <*> (superApplicative h)
+    superApplicative (AT.Alt g h)     = Nothing
+    superApplicative (AT.Empty)       = Nothing
 
     -- Either A or a Packet to return A
     pk :: RemoteApplicative c p a -> X c p a
-    pk (T.Pure a)      = Pure' a
-    pk (T.Command   c) = Pkt id $ A.Command c
-    pk (T.Procedure p) = Pkt id $ A.Procedure p
-    pk (T.Ap g h)      = case (pk g, pk h) of
+    pk (AT.Pure a)      = Pure' a
+    pk (AT.Command   c) = Pkt id $ A.Command c
+    pk (AT.Procedure p) = Pkt id $ A.Procedure p
+    pk (AT.Ap g h)      = case (pk g, pk h) of
                            (Pure' a, Pure' b)   -> Pure' (a b)
                            (Pure' a, Pkt f b)   -> Pkt (\b' -> a (f b')) b
                            (Pkt f a, Pure' b)   -> Pkt (\a' -> f a' b) a
@@ -248,12 +250,12 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
                              return a
 
     pk :: forall a . RemoteApplicative c p a -> Alt.AlternativePacket c p a
-    pk (T.Empty)       = empty
-    pk (T.Pure a)      = pure a
-    pk (T.Command c)   = (Alt.Command c)
-    pk (T.Procedure p) = (Alt.Procedure p)
-    pk (T.Ap g h)      = (pk g) <*> (pk h)
-    pk (T.Alt g h)     = (pk g) <|> (pk h)
+    pk (AT.Empty)       = empty
+    pk (AT.Pure a)      = pure a
+    pk (AT.Command c)   = (Alt.Command c)
+    pk (AT.Procedure p) = (Alt.Procedure p)
+    pk (AT.Ap g h)      = (pk g) <*> (pk h)
+    pk (AT.Alt g h)     = (pk g) <|> (pk h)
 
     -- g is a function that will take the current state as input
     discharge :: forall a f . Applicative f => (f () ->RemoteApplicative c p a )-> StateT (f ()) m a
@@ -263,12 +265,12 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
                  lift $ rf $ pk $ g ap'
 
     superApplicative :: RemoteApplicative c p a -> Maybe a
-    superApplicative (T.Empty)       = Nothing
-    superApplicative (T.Pure a)      = pure a
-    superApplicative (T.Command c)   = pure ()
-    superApplicative (T.Procedure p) = Nothing
-    superApplicative (T.Ap g h)      = (superApplicative g) <*> (superApplicative h)
-    superApplicative (T.Alt g h)      = (superApplicative g) <|> (superApplicative h)
+    superApplicative (AT.Empty)       = Nothing
+    superApplicative (AT.Pure a)      = pure a
+    superApplicative (AT.Command c)   = pure ()
+    superApplicative (AT.Procedure p) = Nothing
+    superApplicative (AT.Ap g h)      = (superApplicative g) <*> (superApplicative h)
+    superApplicative (AT.Alt g h)      = (superApplicative g) <|> (superApplicative h)
 
 
 

@@ -39,7 +39,8 @@ import qualified Control.Remote.WithAsync.Packet.Strong as Strong
 import           Control.Remote.WithAsync.Packet.Strong (StrongPacket, HStrongPacket(..))
 import qualified Control.Remote.WithAsync.Packet.Weak as Weak
 import           Control.Remote.WithAsync.Packet.Weak (WeakPacket)
-import           Control.Remote.WithAsync.Monad.Types as T
+import           Control.Remote.WithAsync.Applicative.Types as T
+import           Control.Remote.WithAsync.Util as T
 import           Control.Natural
 import           Control.Applicative
 import           Control.Monad.Catch

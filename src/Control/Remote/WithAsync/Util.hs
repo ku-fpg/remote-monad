@@ -1,7 +1,11 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.WithoutAsync.Util
+Module:      Control.Remote.WithAsync.Util
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -9,14 +13,15 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithoutAsync.Util
+module Control.Remote.WithAsync.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   ) where
 
-import Control.Applicative
-import Control.Monad.Catch
-import Data.Typeable
+
+import            Control.Monad.Catch
+import            Control.Applicative
+import            Data.Typeable
 
 
 data Wrapper f a where
@@ -39,9 +44,10 @@ instance Applicative f => Alternative (Wrapper f) where
      (Value g)  <|> _ = Value g
 
 value :: f a -> Wrapper f a
-value  = Value
+value  = Value 
 
 data RemoteMonadException = RemoteEmptyException
    deriving (Show, Typeable)                             
                                                          
 instance Exception RemoteMonadException                 
+      

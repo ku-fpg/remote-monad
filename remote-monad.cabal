@@ -3,7 +3,7 @@
 
 name:                remote-monad
 version:             0.4
-synopsis:            An parametrizable Remote Monad, and parametrizable Applicative Functor
+synopsis:            A parametrizable Remote Monad, and parametrizable Applicative Functor with commands, procedures, and queries as the remote primitives
 description:
   An implementation of the concepts behind Remote Monads. There is support for various bundling strategies.
   .
@@ -79,8 +79,10 @@ library
                        Control.Remote.WithAsync.Packet
                        Control.Remote.WithAsync.Packet.Transport
                        Control.Remote.WithAsync.Applicative
+                       Control.Remote.WithAsync.Applicative.Types
                        Control.Remote.WithAsync.Monad
                        Control.Remote.WithAsync.Monad.Types
+                       Control.Remote.WithAsync.Util
 
   other-modules:
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
