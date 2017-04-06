@@ -16,8 +16,6 @@ Portability: GHC
 module Control.Remote.WithoutAsync.Packet.Alternative
   ( -- * The remote applicative
     AlternativePacket(..)
-    -- * Utility
-  , superCommand
   ) where
 
 
@@ -51,15 +49,4 @@ instance Applicative (AlternativePacket p) where
 instance Alternative (AlternativePacket p) where
   g <|> h = g `Alt` h
   empty   = Empty
-
--- | This simulates a 'AlternativePacket', to see if it only contains commands, and if so,
--- returns the static result. The commands still need executed. The term super-command
--- is a play on Hughes' super-combinator terminology.
-
-superCommand :: AlternativePacket p a -> Maybe a
-superCommand (Pure a)        = pure a
-superCommand (Procedure _)   = Nothing
-superCommand (Alt g h)       = Nothing -- TODO for now
-superCommand (Zip ($) g h)   = ($) <$> superCommand g <*> superCommand h
-
 

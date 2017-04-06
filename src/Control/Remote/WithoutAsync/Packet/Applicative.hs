@@ -16,8 +16,6 @@ Portability: GHC
 module Control.Remote.WithoutAsync.Packet.Applicative
   ( -- * The remote applicative
     ApplicativePacket(..)
-    -- * Utility
-  , superCommand
   ) where
 
 
@@ -41,14 +39,3 @@ instance Functor (ApplicativePacket p) where
 instance Applicative (ApplicativePacket p) where
   pure a = Pure a
   g <*> h = Zip ($) g h
-
--- | This simulates a 'ApplicativePacket', to see if it only contains commands, and if so,
--- returns the static result. The commands still need executed. The term super-command
--- is a play on Hughes' super-combinator terminology.
-
-superCommand :: ApplicativePacket p a -> Maybe a
-superCommand (Pure a)        = pure a
-superCommand (Procedure _)   = Nothing
-superCommand (Zip ($) g h)   = ($) <$> superCommand g <*> superCommand h
-
-
