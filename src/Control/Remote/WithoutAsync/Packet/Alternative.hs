@@ -29,24 +29,24 @@ import Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.
 
-data AlternativePacket (p :: * -> *) (a :: *) where
-   Procedure :: p a                       -> AlternativePacket p a
-   Zip       :: (x -> y -> z)
-             -> AlternativePacket p x 
-             -> AlternativePacket p y     -> AlternativePacket p z
-   Pure      :: a                         -> AlternativePacket p a  
-   Alt       :: AlternativePacket p a
-             -> AlternativePacket p a     -> AlternativePacket p a
-   Empty     ::                              AlternativePacket p a
+data AlternativePacket (q :: * -> *) (a :: *) where
+   Query :: q a                       -> AlternativePacket q a
+   Zip   :: (x -> y -> z)
+         -> AlternativePacket q x 
+         -> AlternativePacket q y     -> AlternativePacket q z
+   Pure  :: a                         -> AlternativePacket q a  
+   Alt   :: AlternativePacket q a
+         -> AlternativePacket q a     -> AlternativePacket q a
+   Empty ::                              AlternativePacket q a
 
-instance Functor (AlternativePacket p) where
+instance Functor (AlternativePacket q) where
   fmap f g = pure f <*> g
 
-instance Applicative (AlternativePacket p) where
+instance Applicative (AlternativePacket q) where
   pure a = Pure a
   g <*> h = Zip ($) g h
 
-instance Alternative (AlternativePacket p) where
+instance Alternative (AlternativePacket q) where
   g <|> h = g `Alt` h
   empty   = Empty
 

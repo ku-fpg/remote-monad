@@ -19,14 +19,14 @@ import Control.Remote.WithoutAsync.Packet.Transport
 
 -- | A Weak Packet, that can encode a command or a procedure.
 
-data WeakPacket (p :: * -> *) (a :: *) where
-   Procedure :: p a -> WeakPacket p a
+data WeakPacket (q :: * -> *) (a :: *) where
+   Query :: q a -> WeakPacket q a
 
-deriving instance Show (p a) => Show (WeakPacket p a)
+deriving instance Show (q a) => Show (WeakPacket q a)
 
-instance Read (Transport p) => Read (Transport (WeakPacket p)) where
+instance Read (Transport q) => Read (Transport (WeakPacket q)) where
   readsPrec d = readParen (d > 10) $ \ r0 ->
-        [ (Transport $ Procedure p,r2)
-        | ("Procedure",r1) <- lex r0
-        , (Transport p,r2) <- readsPrec 11 r1
+        [ (Transport $ Query q,r2)
+        | ("Query",r1) <- lex r0
+        , (Transport q,r2) <- readsPrec 11 r1
         ] 

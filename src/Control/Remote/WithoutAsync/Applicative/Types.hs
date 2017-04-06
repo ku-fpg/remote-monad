@@ -25,23 +25,23 @@ import            Data.Typeable
 import            Control.Monad.Trans.Class
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
-data RemoteApplicative (proc:: * -> *) a where 
-   Procedure :: proc a                   -> RemoteApplicative proc a
-   Alt       :: RemoteApplicative proc a 
-             -> RemoteApplicative proc a -> RemoteApplicative proc a
-   Ap        :: RemoteApplicative proc (a -> b) 
-             -> RemoteApplicative proc a -> RemoteApplicative proc b
-   Pure      :: a                        -> RemoteApplicative proc a  
-   Empty     ::                             RemoteApplicative proc a
+data RemoteApplicative (q :: * -> *) a where 
+   Query :: q a                   -> RemoteApplicative q a
+   Alt   :: RemoteApplicative q a 
+         -> RemoteApplicative q a -> RemoteApplicative q a
+   Ap    :: RemoteApplicative q (a -> b) 
+         -> RemoteApplicative q a -> RemoteApplicative q b
+   Pure  :: a                     -> RemoteApplicative q a  
+   Empty ::                          RemoteApplicative q a
   
-instance Functor (RemoteApplicative proc) where
+instance Functor (RemoteApplicative q) where
   fmap f g = pure f <*> g
 
-instance Applicative (RemoteApplicative proc) where   -- may need m to be restricted to Monad here
+instance Applicative (RemoteApplicative q) where   -- may need m to be restricted to Monad here
   pure a = Pure a
   (<*>) = Ap
 
-instance Alternative (RemoteApplicative proc) where
+instance Alternative (RemoteApplicative q) where
    empty       = Empty
-   Empty <|> p = p
+   Empty <|> q = q
    m1 <|> m2   = Alt m1 m2
