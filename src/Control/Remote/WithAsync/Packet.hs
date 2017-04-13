@@ -12,12 +12,12 @@ Portability: GHC
 -}
 
 module Control.Remote.WithAsync.Packet
-  (
+{-  (
     Promote(..)
   , promoteToStrong
   , promoteToApplicative
   , promoteToAlternative
-  ) where
+  )-} where
 import qualified Control.Remote.WithAsync.Packet.Weak as Weak
 import qualified Control.Remote.WithAsync.Packet.Strong as Strong
 import qualified Control.Remote.WithAsync.Packet.Applicative as A
@@ -26,8 +26,8 @@ import           Control.Natural
 import           Control.Applicative
 
 class Promote f where
-    promote :: (Applicative m) => (Weak.WeakPacket c p :~> m) -> (f c p :~> m)
-
+    promote :: (Applicative m) => (Weak.WeakPacket p :~> m) -> (f p :~> m)
+{-
 instance Promote A.ApplicativePacket where
    promote f =  promoteToApplicative f
 
@@ -66,3 +66,4 @@ promoteToStrong (NT f) = NT $ strongFunc
                            strongFunc (Strong.Command c cmds) = f (Weak.Command c) *> strongFunc cmds
                            strongFunc (Strong.Procedure p)    = f (Weak.Procedure p)
                            strongFunc (Strong.Done)           = pure ()
+-}

@@ -22,7 +22,7 @@ module Control.Remote.WithAsync.Applicative
     -- * The run functions
   , RunApplicative(runApplicative)
   , runWeakApplicative
-  , runStrongApplicative
+--  , runStrongApplicative
   , runApplicativeApplicative
   , runAlternativeApplicative
   ) where
@@ -48,26 +48,26 @@ import           Control.Monad.Trans.Maybe
 
 
 -- | promote a command into the applicative
-command :: c -> RemoteApplicative c p ()
-command c = T.Command c
+command :: c -> RemoteApplicative CP ()
+command c = T.Procedure (Cmd c)
 
 -- | promote a command into the applicative
-procedure :: p a -> RemoteApplicative  c p a
-procedure p = T.Procedure p
+procedure :: p a -> RemoteApplicative CP a
+procedure p = T.Procedure (Proc p)
 
 
 -- | 'RunApplicative' is the overloading for choosing the appropriate bundling strategy for applicative.
 class RunApplicative f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runApplicative :: (MonadThrow m) => (f c p :~> m) -> (RemoteApplicative c p:~> m)
+  runApplicative :: (MonadThrow m) => (f cp :~> m) -> (RemoteApplicative cp :~> m)
 
 instance RunApplicative WeakPacket where
   runApplicative = runWeakApplicative
-
+{-
 instance RunApplicative StrongPacket where
   runApplicative = runStrongApplicative
-
+-}
 instance RunApplicative ApplicativePacket where
   runApplicative = runApplicativeApplicative
 
@@ -75,25 +75,25 @@ instance RunApplicative AlternativePacket where
   runApplicative = runAlternativeApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
-runWeakApplicative :: forall m c p . (MonadThrow m) => (WeakPacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runWeakApplicative :: forall m . (MonadThrow m) => (WeakPacket CP :~> m) -> (RemoteApplicative CP :~> m)
 runWeakApplicative (NT rf) = wrapNT $ go
   where
-    go :: forall a . RemoteApplicative c p a ->  m a
+    go :: forall a . RemoteApplicative CP a ->  m a
     go p = do r <- runMaybeT (go2 p)
               case r of
                 Nothing -> throwM RemoteEmptyException
                 Just a  -> return a
 
-    go2 :: forall a . RemoteApplicative c p a -> MaybeT m a
-    go2 (T.Command   c)  = lift $ rf (Weak.Command c)
-    go2 (T.Procedure p)  = lift $ rf (Weak.Procedure p)
+    go2 :: forall a . RemoteApplicative CP a -> MaybeT m a
+    go2 (T.Procedure (Cmd c))  = lift $ rf (Weak.Procedure (Cmd c))
+    go2 (T.Procedure (Proc p))  = lift $ rf (Weak.Procedure (Proc p))
     go2 (T.Ap g h)      = go2 g <*> go2 h
     go2 (T.Pure      a) = pure a
     go2 T.Empty         = empty
     go2 (T.Alt g h)     = (go2 g <|> go2 h)
-
+{-
 -- | The strong remote applicative, that bundles together commands.
-runStrongApplicative :: forall m c p . (MonadThrow m) => (StrongPacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runStrongApplicative :: forall m p . (MonadThrow m) => (StrongPacket CP :~> m) -> (RemoteApplicative CP :~> m)
 runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go p)) (HStrongPacket id)
     rf $ h $ Strong.Done
@@ -101,10 +101,10 @@ runStrongApplicative (NT rf) = wrapNT $ \ p -> do
       Just a -> return a
       Nothing -> throwM RemoteEmptyException
   where
-    go :: forall a . RemoteApplicative c p a -> MaybeT (StateT (HStrongPacket c p) m) a
+    go :: forall a . RemoteApplicative CP a -> MaybeT (StateT (HStrongPacket CP) m) a
     go (T.Pure a)      = return a
-    go (T.Command c)   = lift $ do
-        modify (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command c))
+    go (T.Procedure c@(Cmd _))   = lift $ do
+ --       modify (\ (HStrongPacket cs) -> HStrongPacket (cs . (Strong.Procedure c)))
         return ()
     go (T.Procedure p) = lift$ do
         HStrongPacket cs <- get
@@ -114,34 +114,35 @@ runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     go (T.Ap g h)      = go g <*> go h
     go (T.Alt g h)     = go g <|> go h
     go (T.Empty )      = empty
-
+-}
 
 -- | The applicative remote applicative, that is the identity function.
-runApplicativeApplicative :: forall m c p . (MonadThrow m) => (ApplicativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runApplicativeApplicative :: forall m  . (MonadThrow m) => (ApplicativePacket CP :~> m) -> (RemoteApplicative CP :~> m)
 runApplicativeApplicative (NT rf) = wrapNT (go4 . go3)
   where
-    go3 :: forall a . RemoteApplicative c p a -> Wrapper (ApplicativePacket c p) a
+    go3 :: forall a . RemoteApplicative CP a -> Wrapper (ApplicativePacket CP) a
     go3 (T.Empty)       = empty   --uses Throw'
     go3 (T.Pure a)      = pure a
-    go3 (T.Command c)   = Value (A.Command c)
+    go3 (T.Procedure c@(Cmd _))   = Value (A.Procedure c)
     go3 (T.Procedure p) = Value (A.Procedure p)
     go3 (T.Ap g h)      = (go3 g) <*> (go3 h)
     go3 (T.Alt g h)     = (go3 g) <|> (go3 h)
 
-    go4 :: forall a . Wrapper (ApplicativePacket c p) a -> m a
+    go4 :: forall a . Wrapper (ApplicativePacket CP) a -> m a
     go4 (Value pkt)  = rf pkt
     go4 (Throw' pkt) = do () <- rf pkt
                           throwM RemoteEmptyException
 
 
 
-runAlternativeApplicative :: forall m c p . (MonadThrow m) => (AlternativePacket c p :~> m) -> (RemoteApplicative c p :~> m)
+runAlternativeApplicative :: forall m . (MonadThrow m) => (AlternativePacket CP :~> m) -> (RemoteApplicative CP :~> m)
 runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
    where
-      go :: forall a . RemoteApplicative c p a -> AlternativePacket c p a
-      go (T.Empty)       = Alt.Empty
-      go (T.Pure a)      = pure a
-      go (T.Command c)   = Alt.Command c
-      go (T.Procedure p) = Alt.Procedure p
-      go (T.Ap g h)      = (go g) <*> (go h)
-      go (T.Alt g h)     = (go g) <|> (go h)
+      go :: forall a . RemoteApplicative CP a -> AlternativePacket CP a
+      go (T.Empty)               = Alt.Empty
+      go (T.Pure a)              = pure a
+      go (T.Procedure c@(Cmd _)) = Alt.Procedure c
+      go (T.Procedure p)         = Alt.Procedure p
+      go (T.Ap g h)              = (go g) <*> (go h)
+      go (T.Alt g h)             = (go g) <|> (go h)
+

@@ -27,36 +27,36 @@ import            Control.Remote.WithAsync.Applicative.Types
 import            Control.Remote.WithAsync.Util
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
-data RemoteMonad  (cmd:: *) (proc:: * -> *) a where
-   Appl        :: RemoteApplicative cmd proc a -> RemoteMonad cmd proc a
-   Bind        :: RemoteMonad cmd proc a -> (a -> RemoteMonad cmd proc b) -> RemoteMonad cmd proc b
-   Ap'         :: RemoteMonad cmd proc (a -> b) -> RemoteMonad cmd proc a -> RemoteMonad cmd proc b
-   Alt'        :: RemoteMonad cmd proc a -> RemoteMonad cmd proc a -> RemoteMonad cmd proc a
-   Empty'      :: RemoteMonad cmd proc a 
-   Throw       :: Exception e => e -> RemoteMonad cmd proc a
-   Catch       :: Exception e => RemoteMonad cmd proc a -> (e -> RemoteMonad cmd proc a)-> RemoteMonad cmd proc a
+data RemoteMonad  p a where
+   Appl        :: RemoteApplicative p a -> RemoteMonad p a
+   Bind        :: RemoteMonad p a -> (a -> RemoteMonad p b) -> RemoteMonad p b
+   Ap'         :: RemoteMonad p (a -> b) -> RemoteMonad p a -> RemoteMonad p b
+   Alt'        :: RemoteMonad p a -> RemoteMonad p a -> RemoteMonad p a
+   Empty'      :: RemoteMonad p a 
+   Throw       :: Exception e => e -> RemoteMonad p a
+   Catch       :: Exception e => RemoteMonad p a -> (e -> RemoteMonad p a)-> RemoteMonad p a
   
-instance  Functor (RemoteMonad cmd proc) where
+instance  Functor (RemoteMonad p) where
   fmap f m = pure f <*> m
 
-instance  Applicative (RemoteMonad cmd proc) where
+instance  Applicative (RemoteMonad p) where
   pure a                = Appl (pure a)
   Appl f   <*> Appl g   = Appl (f <*> g)
   f        <*> g        = Ap' f g
 
-instance Monad (RemoteMonad cmd proc) where
+instance Monad (RemoteMonad p) where
   return      = pure
   m >>= k     = Bind m k
   Empty' >> m2 = Empty'
   m1 >> m2    = m1 *> m2 -- This improves our bundling opportunities
 
-instance MonadThrow (RemoteMonad cmd proc) where
+instance MonadThrow (RemoteMonad p) where
     throwM e = Throw e
 
-instance MonadCatch (RemoteMonad cmd proc) where
+instance MonadCatch (RemoteMonad p) where
     catch m f = Catch m f
 
-instance Alternative (RemoteMonad cmd proc) where
+instance Alternative (RemoteMonad p) where
     empty        = Empty'
     Empty' <|> p = p
     Appl g <|> Appl h = Appl (g <|> h)

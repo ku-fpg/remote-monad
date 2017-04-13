@@ -24,7 +24,7 @@ module Control.Remote.WithAsync.Monad
     -- * The run functions
   , RunMonad(runMonad)
   , runWeakMonad
-  , runStrongMonad
+--  , runStrongMonad
   , runApplicativeMonad
   , runAlternativeMonad
   ) where
@@ -48,14 +48,14 @@ import           Control.Monad.Trans.Maybe
 
 
 -- | promote a command into the remote monad
-command :: c -> RemoteMonad c p ()
+command :: c -> RemoteMonad CP ()
 command = Appl . A.command
 
 -- | promote a procedure into the remote monad
-procedure :: p a -> RemoteMonad c p a
+procedure :: p a -> RemoteMonad CP a
 procedure = Appl . A.procedure
 
-loop :: forall a c p l . (a-> Bool) -> RemoteMonad c p a -> RemoteMonad c p a
+loop :: forall a c p l . (a-> Bool) -> RemoteMonad p a -> RemoteMonad p a
 loop f m = do  res <- m
                if f res then
                  loop f m
@@ -66,14 +66,14 @@ loop f m = do  res <- m
 class RunMonad f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runMonad :: (MonadCatch m) => (f c p :~> m) -> (RemoteMonad c p :~> m)
+  runMonad :: (MonadCatch m) => (f cp :~> m) -> (RemoteMonad cp :~> m)
 
 instance RunMonad WeakPacket where
   runMonad = runWeakMonad
-
+{-
 instance RunMonad StrongPacket where
   runMonad = runStrongMonad
-
+-}
 instance RunMonad ApplicativePacket where
   runMonad = runApplicativeMonad
 
@@ -86,7 +86,7 @@ instance RunMonad Alt.AlternativePacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (MonadCatch m) => (RemoteApplicative c p :~> m) -> (RemoteMonad c p :~> m)
+runMonadSkeleton :: (MonadCatch m) => (RemoteApplicative CP :~> m) -> (RemoteMonad CP :~> m)
 runMonadSkeleton f = wrapNT $ \ case
   Appl g   -> unwrapNT f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # (k a)
@@ -101,14 +101,14 @@ runMonadSkeleton f = wrapNT $ \ case
 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
-runWeakMonad :: (MonadCatch m) => (WeakPacket c p :~> m) -> (RemoteMonad c p :~> m)
+runWeakMonad :: (MonadCatch m) => (WeakPacket CP :~> m) -> (RemoteMonad CP :~> m)
 runWeakMonad = runMonadSkeleton . A.runWeakApplicative
 
-
+{-
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'StrongPacket') as large as possible,
 --   including over some monadic binds.
-runStrongMonad :: forall m c p . (MonadCatch m) => (StrongPacket c p :~> m) -> (RemoteMonad c p :~> m)
+runStrongMonad :: forall m c p . (MonadCatch m) => (StrongPacket CP :~> m) -> (RemoteMonad CP :~> m)
 runStrongMonad (NT rf) = wrapNT $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go2 p)) (HStrongPacket id)
     rf $ h $ Strong.Done
@@ -116,7 +116,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
        Nothing -> throwM RemoteEmptyException
        Just v  -> return v
   where
-    go2 :: forall a . RemoteMonad c p a -> MaybeT (StateT (HStrongPacket c p) m) a
+    go2 :: forall a . RemoteMonad CP a -> MaybeT (StateT (HStrongPacket CP) m) a
     go2 (Appl app)   = go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
     go2 (Ap' g h)    = go2 g <*> go2 h
@@ -129,10 +129,10 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-    go :: forall a . RemoteApplicative c p a -> MaybeT (StateT (HStrongPacket c p) m) a
+    go :: forall a . RemoteApplicative CP a -> MaybeT (StateT (HStrongPacket CP) m) a
     go (AT.Pure a)      = return a
-    go (AT.Command c)   = lift $ do
-        modify (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command c))
+    go (AT.Procedure c@(Cmd _))   = lift $ do
+        modify (\ (HStrongPacket cs) -> HStrongPacket (cs . (Strong.Procedure $ c)))
         return ()
     go (AT.Procedure p) = lift $ do
         HStrongPacket cs <- get
@@ -141,11 +141,11 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
         return $ r2
     go (AT.Ap g h) = go g <*> go h
     go (AT.Alt g h) = go g <|> go h
-
+-}
 -- | The is the strong applicative strong remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible,
 --   including over some monadic binds.
-runApplicativeMonad :: forall m c p . (MonadCatch m) => (A.ApplicativePacket c p :~> m) -> (RemoteMonad c p :~> m)
+runApplicativeMonad :: forall m . (MonadCatch m) => (A.ApplicativePacket CP :~> m) -> (RemoteMonad CP :~> m)
 runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
     (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ())
     case  pk h of -- should we stub out the call with only 'Pure'?
@@ -156,7 +156,7 @@ runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
       Nothing -> throwM RemoteEmptyException
       Just v -> return v
   where
-    go2 :: forall a . RemoteMonad c p a -> MaybeT (StateT (RemoteApplicative c p ()) m) a
+    go2 :: forall a . RemoteMonad CP a -> MaybeT (StateT (RemoteApplicative CP ()) m) a
     go2 (Appl app)   = lift $ unwrap $ go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
     go2 (Ap' g h)    = go2 g <*> go2 h
@@ -167,16 +167,16 @@ runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-    go :: forall a . AT.RemoteApplicative c p a -> Wrapper (RemoteApplicative c p) a
+    go :: forall a . AT.RemoteApplicative CP a -> Wrapper (RemoteApplicative CP) a
     go (AT.Empty) = empty
     go (AT.Pure a) = pure a
-    go (AT.Command c) = Value (AT.Command c)
-    go (AT.Procedure p) = Value (AT.Procedure p)
+    go c@(AT.Procedure (Cmd _)) = Value c
+    go p@(AT.Procedure (Proc _)) = Value p
     go (AT.Ap g h)      = (go g) <*> (go h)
     go (AT.Alt g h)     = (go g) <|> (go h)
 
     -- g is a function that will take the current state as input
-    discharge :: forall a f . Applicative f => (f () ->RemoteApplicative c p a )-> StateT (f ()) m a
+    discharge :: forall a f . Applicative f => (f () ->RemoteApplicative CP a )-> StateT (f ()) m a
     discharge g = do
                  ap' <- get
                  put (pure ()) -- clear state
@@ -186,7 +186,7 @@ runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
                                     res <- lift $ rf pkt
                                     return $ f res
     -- Given a wrapped applicative discharge via local monad
-    unwrap :: forall a . Wrapper(RemoteApplicative c p) a -> StateT (RemoteApplicative c p ()) m a
+    unwrap :: forall a . Wrapper(RemoteApplicative CP) a -> StateT (RemoteApplicative CP ()) m a
     unwrap (Value ap) = case superApplicative ap of
                             Nothing ->do
                                       discharge $ \ap' -> (ap' *> ap)
@@ -199,29 +199,29 @@ runApplicativeMonad (NT rf) = wrapNT $ \ p -> do
                          throwM RemoteEmptyException
 
     -- Do we know the answer? Nothing  =  we need to get it
-    superApplicative :: RemoteApplicative c p a -> Maybe a
+    superApplicative :: RemoteApplicative CP a -> Maybe a
     superApplicative (AT.Pure a)      = pure a
-    superApplicative (AT.Command   c) = Just ()
+    superApplicative (AT.Procedure (Cmd _)) = Just ()
     superApplicative (AT.Procedure p) = Nothing
     superApplicative (AT.Ap g h)      =  (superApplicative g) <*> (superApplicative h)
     superApplicative (AT.Alt g h)     = Nothing
     superApplicative (AT.Empty)       = Nothing
 
     -- Either A or a Packet to return A
-    pk :: RemoteApplicative c p a -> X c p a
+    pk :: RemoteApplicative CP a -> X CP a
     pk (AT.Pure a)      = Pure' a
-    pk (AT.Command   c) = Pkt id $ A.Command c
+    pk (AT.Procedure  c@(Cmd _)) = Pkt id $ A.Procedure c
     pk (AT.Procedure p) = Pkt id $ A.Procedure p
     pk (AT.Ap g h)      = case (pk g, pk h) of
                            (Pure' a, Pure' b)   -> Pure' (a b)
                            (Pure' a, Pkt f b)   -> Pkt (\b' -> a (f b')) b
                            (Pkt f a, Pure' b)   -> Pkt (\a' -> f a' b) a
                            (Pkt f a, Pkt g b)   -> Pkt id $ A.Zip (\ a' b' -> f a' (g b')) a b
-data X c p a where
-   Pure' :: a -> X c p a
-   Pkt  :: (a -> b) -> ApplicativePacket c p a -> X c p b
+data X cp a where
+   Pure' :: a -> X cp a
+   Pkt  :: (a -> b) -> ApplicativePacket cp a -> X cp b
 
-runAlternativeMonad :: forall m c p . (MonadCatch m) => (Alt.AlternativePacket c p :~> m) -> (RemoteMonad c p :~> m)
+runAlternativeMonad :: forall m . (MonadCatch m) => (Alt.AlternativePacket CP :~> m) -> (RemoteMonad CP :~> m)
 runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
    (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ())
    () <- rf $ pk h
@@ -230,7 +230,7 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
       Just v -> return v
 
    where
-    go2 :: forall a . RemoteMonad c p a -> MaybeT (StateT (RemoteApplicative  c p ()) m) a
+    go2 :: forall a . RemoteMonad CP a -> MaybeT (StateT (RemoteApplicative CP ()) m) a
     go2 (Appl app)   = lift $ go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
     go2 (Ap' g h)    = go2 g <*> go2 h
@@ -241,7 +241,7 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-    go :: RemoteApplicative c p a -> StateT (RemoteApplicative c p ()) m a
+    go :: RemoteApplicative CP a -> StateT (RemoteApplicative CP ()) m a
     go ap = case superApplicative ap of
                Nothing -> do
                            discharge $ \ ap' -> ap' *> ap
@@ -249,28 +249,26 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
                              modify (\ap' -> ap' <* ap)
                              return a
 
-    pk :: forall a . RemoteApplicative c p a -> Alt.AlternativePacket c p a
+    pk :: forall a . RemoteApplicative CP a -> Alt.AlternativePacket CP a
     pk (AT.Empty)       = empty
     pk (AT.Pure a)      = pure a
-    pk (AT.Command c)   = (Alt.Command c)
+    pk (AT.Procedure c@(Cmd _))   = (Alt.Procedure c)
     pk (AT.Procedure p) = (Alt.Procedure p)
     pk (AT.Ap g h)      = (pk g) <*> (pk h)
     pk (AT.Alt g h)     = (pk g) <|> (pk h)
 
     -- g is a function that will take the current state as input
-    discharge :: forall a f . Applicative f => (f () ->RemoteApplicative c p a )-> StateT (f ()) m a
+    discharge :: forall a f . Applicative f => (f () ->RemoteApplicative CP a )-> StateT (f ()) m a
     discharge g = do
                  ap' <- get
                  put (pure ()) -- clear state
                  lift $ rf $ pk $ g ap'
 
-    superApplicative :: RemoteApplicative c p a -> Maybe a
+    superApplicative :: RemoteApplicative CP a -> Maybe a
     superApplicative (AT.Empty)       = Nothing
     superApplicative (AT.Pure a)      = pure a
-    superApplicative (AT.Command c)   = pure ()
+    superApplicative (AT.Procedure (Cmd _))   = pure ()
     superApplicative (AT.Procedure p) = Nothing
     superApplicative (AT.Ap g h)      = (superApplicative g) <*> (superApplicative h)
     superApplicative (AT.Alt g h)      = (superApplicative g) <|> (superApplicative h)
-
-
 

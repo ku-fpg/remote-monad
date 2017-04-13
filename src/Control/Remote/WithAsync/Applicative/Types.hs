@@ -15,6 +15,7 @@ Portability: GHC
 
 module Control.Remote.WithAsync.Applicative.Types 
   ( RemoteApplicative(..)
+  , CP(..)
   ) where
 
 
@@ -24,23 +25,26 @@ import            Control.Applicative
 import            Data.Typeable
 import            Control.Monad.Trans.Class
 
+data CP (c :: *) (p :: * -> *) a where
+  Cmd   :: c   -> CP c p ()
+  Proc  :: p a -> CP c p a
+
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
-data RemoteApplicative (cmd:: *) (proc:: * -> *) a where 
-   Command   :: cmd   -> RemoteApplicative cmd proc () 
-   Procedure :: proc a -> RemoteApplicative cmd proc a
-   Alt       :: RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc a
-   Ap        :: RemoteApplicative cmd proc (a -> b) -> RemoteApplicative cmd proc a -> RemoteApplicative cmd proc b
-   Pure      :: a   -> RemoteApplicative cmd proc a  
-   Empty     :: RemoteApplicative cmd proc a
+data RemoteApplicative (cp :: * -> (* -> *) -> * -> *) a where 
+   Procedure :: cp c p a -> RemoteApplicative cp a
+   Alt       :: RemoteApplicative cp a -> RemoteApplicative cp a -> RemoteApplicative cp a
+   Ap        :: RemoteApplicative cp (a -> b) -> RemoteApplicative cp a -> RemoteApplicative cp b
+   Pure      :: a   -> RemoteApplicative cp a  
+   Empty     :: RemoteApplicative cp a
   
-instance Functor (RemoteApplicative cmd proc) where
+instance Functor (RemoteApplicative p) where
   fmap f g = pure f <*> g
 
-instance Applicative (RemoteApplicative cmd proc) where   -- may need m to be restricted to Monad here
+instance Applicative (RemoteApplicative p) where
   pure a = Pure a
   (<*>) = Ap
 
-instance Alternative (RemoteApplicative cmd proc) where
+instance Alternative (RemoteApplicative p) where
    empty       = Empty
    Empty <|> p = p
    m1 <|> m2   = Alt m1 m2
