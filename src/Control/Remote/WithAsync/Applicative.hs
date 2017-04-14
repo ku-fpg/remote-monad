@@ -20,7 +20,7 @@ module Control.Remote.WithAsync.Applicative
   , command
   , procedure
     -- * The run functions
---  , RunApplicative(runApplicative)
+  , RunApplicative(runApplicative)
   , runWeakApplicative
 --  , runStrongApplicative
   , runApplicativeApplicative
