@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 {-|
 Module:      Control.Remote.WithAsync.Util
@@ -17,6 +18,7 @@ module Control.Remote.WithAsync.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   , Result(..)
+  , Convertible(..)
   ) where
 
 
@@ -31,29 +33,32 @@ data Wrapper f a where
 
 instance Applicative f => Functor (Wrapper f) where
     fmap f g = (pure f)<*> g
-    
+
 instance Applicative f => Applicative (Wrapper f) where
     pure a = Value $ pure a
     (Value f) <*> (Value g) = Value (f <*> g)
-    (Throw' f) <*> g = Throw' f 
+    (Throw' f) <*> g = Throw' f
     (Value f)  <*> (Throw' g) = Throw' (f *> g)
-    
+
 instance Applicative f => Alternative (Wrapper f) where
-     empty = Throw' (pure ()) 
+     empty = Throw' (pure ())
      (Throw' g) <|> (Value h) = Value (g *> h)
      (Throw' g) <|> (Throw' h) = Throw' (g *> h)
      (Value g)  <|> _ = Value g
 
 value :: f a -> Wrapper f a
-value  = Value 
+value  = Value
 
 data RemoteMonadException = RemoteEmptyException
-   deriving (Show, Typeable)                             
-                                                         
-instance Exception RemoteMonadException                 
-      
+   deriving (Show, Typeable)
+
+instance Exception RemoteMonadException
+
 -- | Can we dynamically extract the 'result' of a functor, without evaluation.
 
 class Result f where
   result :: f a -> Maybe a
+
+class Convertible f g where
+  convert :: f a -> g a
 

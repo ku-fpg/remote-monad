@@ -3,7 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
-
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-|
 Module:      Control.Remote.WithAsync.Applicative.Types
 Copyright:   (C) 2016, The University of Kansas
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Applicative.Types 
+module Control.Remote.WithAsync.Applicative.Types
   ( RemoteApplicative(..)
   , CP(..)
   ) where
@@ -25,19 +25,20 @@ import            Control.Applicative
 import            Data.Typeable
 import            Control.Monad.Trans.Class
 import            Control.Remote.WithAsync.Util
+import qualified  Control.Remote.WithAsync.Packet.Applicative as AP
 
 data CP (c :: *) (p :: * -> *) a where
   Cmd   :: c   -> CP c p ()
   Proc  :: p a -> CP c p a
 
 -- | 'RemoteApplicative' is our applicative that can be executed in a remote location.
-data RemoteApplicative (cp :: * -> (* -> *) -> * -> *) a where 
-   Procedure :: cp c p a -> RemoteApplicative cp a
+data RemoteApplicative cp a where
+   Primitive :: cp a -> RemoteApplicative cp a
    Alt       :: RemoteApplicative cp a -> RemoteApplicative cp a -> RemoteApplicative cp a
    Ap        :: RemoteApplicative cp (a -> b) -> RemoteApplicative cp a -> RemoteApplicative cp b
-   Pure      :: a   -> RemoteApplicative cp a  
+   Pure      :: a   -> RemoteApplicative cp a
    Empty     :: RemoteApplicative cp a
-  
+
 instance Functor (RemoteApplicative p) where
   fmap f g = pure f <*> g
 
@@ -53,3 +54,9 @@ instance Alternative (RemoteApplicative p) where
 instance Result (CP c p) where
     result (Cmd a)  = return ()
     result (Proc p) = fail "unknown result"
+
+instance (Result cp) => Result (RemoteApplicative cp) where
+  result (Primitive p) = result p
+  result (Pure a)      = pure a
+  result (Ap g h)      = result g <*> result h
+  result (Alt g h)     = Nothing

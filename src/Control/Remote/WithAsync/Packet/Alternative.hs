@@ -30,8 +30,8 @@ import Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.
 
-data AlternativePacket (cp :: * -> (* -> *) -> * -> *) (a :: *) where
-   Procedure :: cp c p a                 -> AlternativePacket cp a
+data AlternativePacket (cp :: * -> *) (a :: *) where
+   Primitive :: cp     a                 -> AlternativePacket cp a
    Zip       :: (x -> y -> z)
              -> AlternativePacket cp x 
              -> AlternativePacket cp y   -> AlternativePacket cp z

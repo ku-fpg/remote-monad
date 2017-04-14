@@ -17,7 +17,7 @@ module Control.Remote.WithAsync.Packet.Weak where
 
 import Control.Remote.WithAsync.Packet.Transport 
 
-data WeakPacket (cp :: * -> (* -> *) -> * -> *) (a :: *) where
-   Procedure :: cp c p a -> WeakPacket cp a
+data WeakPacket (cp :: * -> * ) (a :: *) where
+   Primitive :: cp a -> WeakPacket cp a
 
 --deriving instance (Show (cp c p a)) => Show (WeakPacket cp a)

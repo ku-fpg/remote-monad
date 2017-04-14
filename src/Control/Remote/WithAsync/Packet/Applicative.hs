@@ -27,12 +27,12 @@ import Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.
 
-data ApplicativePacket (cp :: * -> (* -> *) -> * -> *) (a :: *) where
-   Procedure :: cp c p a               -> ApplicativePacket cp a
+data ApplicativePacket (cp :: * -> *) (a :: *) where
+   Primitive :: cp  a                  -> ApplicativePacket cp a
    Zip       :: (x -> y -> z)
-             -> ApplicativePacket cp x 
+             -> ApplicativePacket cp x
              -> ApplicativePacket cp y -> ApplicativePacket cp z
-   Pure      :: a                      -> ApplicativePacket cp a  
+   Pure      :: a                      -> ApplicativePacket cp a
 
 instance Functor (ApplicativePacket cp) where
   fmap f g = pure f <*> g
