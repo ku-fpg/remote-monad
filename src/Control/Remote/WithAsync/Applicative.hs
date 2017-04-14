@@ -20,7 +20,7 @@ module Control.Remote.WithAsync.Applicative
   , command
   , procedure
     -- * The run functions
-  , RunApplicative(runApplicative)
+--  , RunApplicative(runApplicative)
   , runWeakApplicative
 --  , runStrongApplicative
   , runApplicativeApplicative
@@ -58,9 +58,11 @@ procedure p = T.Procedure (Proc p)
 
 -- | 'RunApplicative' is the overloading for choosing the appropriate bundling strategy for applicative.
 class RunApplicative f where
+
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runApplicative :: (MonadThrow m) => (f cp :~> m) -> (RemoteApplicative cp :~> m)
+  runApplicative :: (MonadThrow m) => (f prim :~> m) -> (RemoteApplicative prim :~> m)
+
 
 instance RunApplicative WeakPacket where
   runApplicative = runWeakApplicative
@@ -75,18 +77,17 @@ instance RunApplicative AlternativePacket where
   runApplicative = runAlternativeApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
-runWeakApplicative :: forall m . (MonadThrow m) => (WeakPacket CP :~> m) -> (RemoteApplicative CP :~> m)
+runWeakApplicative :: forall m prim . (MonadThrow m) => (WeakPacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runWeakApplicative (NT rf) = wrapNT $ go
   where
-    go :: forall a . RemoteApplicative CP a ->  m a
+    go :: forall a . RemoteApplicative prim a ->  m a
     go p = do r <- runMaybeT (go2 p)
               case r of
                 Nothing -> throwM RemoteEmptyException
                 Just a  -> return a
 
-    go2 :: forall a . RemoteApplicative CP a -> MaybeT m a
-    go2 (T.Procedure (Cmd c))  = lift $ rf (Weak.Procedure (Cmd c))
-    go2 (T.Procedure (Proc p))  = lift $ rf (Weak.Procedure (Proc p))
+    go2 :: forall a . RemoteApplicative prim a -> MaybeT m a
+    go2 (T.Procedure prim)  = lift $ rf (Weak.Procedure prim)
     go2 (T.Ap g h)      = go2 g <*> go2 h
     go2 (T.Pure      a) = pure a
     go2 T.Empty         = empty
@@ -117,31 +118,31 @@ runStrongApplicative (NT rf) = wrapNT $ \ p -> do
 -}
 
 -- | The applicative remote applicative, that is the identity function.
-runApplicativeApplicative :: forall m  . (MonadThrow m) => (ApplicativePacket CP :~> m) -> (RemoteApplicative CP :~> m)
+runApplicativeApplicative :: forall m prim . (MonadThrow m) => (ApplicativePacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runApplicativeApplicative (NT rf) = wrapNT (go4 . go3)
   where
-    go3 :: forall a . RemoteApplicative CP a -> Wrapper (ApplicativePacket CP) a
+    go3 :: forall a . RemoteApplicative prim a -> Wrapper (ApplicativePacket prim) a
     go3 (T.Empty)       = empty   --uses Throw'
     go3 (T.Pure a)      = pure a
-    go3 (T.Procedure c@(Cmd _))   = Value (A.Procedure c)
+--    go3 (T.Procedure c@(Cmd _))   = Value (A.Procedure c)
     go3 (T.Procedure p) = Value (A.Procedure p)
     go3 (T.Ap g h)      = (go3 g) <*> (go3 h)
     go3 (T.Alt g h)     = (go3 g) <|> (go3 h)
 
-    go4 :: forall a . Wrapper (ApplicativePacket CP) a -> m a
+    go4 :: forall a . Wrapper (ApplicativePacket prim) a -> m a
     go4 (Value pkt)  = rf pkt
     go4 (Throw' pkt) = do () <- rf pkt
                           throwM RemoteEmptyException
 
 
 
-runAlternativeApplicative :: forall m . (MonadThrow m) => (AlternativePacket CP :~> m) -> (RemoteApplicative CP :~> m)
+runAlternativeApplicative :: forall m prim . (MonadThrow m) => (AlternativePacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
    where
-      go :: forall a . RemoteApplicative CP a -> AlternativePacket CP a
+      go :: forall a . RemoteApplicative prim a -> AlternativePacket prim a
       go (T.Empty)               = Alt.Empty
       go (T.Pure a)              = pure a
-      go (T.Procedure c@(Cmd _)) = Alt.Procedure c
+--      go (T.Procedure c@(Cmd _)) = Alt.Procedure c
       go (T.Procedure p)         = Alt.Procedure p
       go (T.Ap g h)              = (go g) <*> (go h)
       go (T.Alt g h)             = (go g) <|> (go h)
