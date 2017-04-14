@@ -24,6 +24,7 @@ import            Control.Monad.Catch
 import            Control.Applicative
 import            Data.Typeable
 import            Control.Monad.Trans.Class
+import            Control.Remote.WithAsync.Util
 
 data CP (c :: *) (p :: * -> *) a where
   Cmd   :: c   -> CP c p ()
@@ -48,3 +49,7 @@ instance Alternative (RemoteApplicative p) where
    empty       = Empty
    Empty <|> p = p
    m1 <|> m2   = Alt m1 m2
+
+instance Result (CP c p) where
+    result (Cmd a)  = return ()
+    result (Proc p) = fail "unknown result"

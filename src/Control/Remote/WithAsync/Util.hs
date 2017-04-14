@@ -16,6 +16,7 @@ Portability: GHC
 module Control.Remote.WithAsync.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
+  , Result(..)
   ) where
 
 
@@ -51,3 +52,8 @@ data RemoteMonadException = RemoteEmptyException
                                                          
 instance Exception RemoteMonadException                 
       
+-- | Can we dynamically extract the 'result' of a functor, without evaluation.
+
+class Result f where
+  result :: f a -> Maybe a
+
