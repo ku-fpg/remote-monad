@@ -18,7 +18,7 @@ module Control.Remote.WithAsync.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   , Result(..)
-  , Convertible(..)
+  , R(..)
   ) where
 
 
@@ -41,10 +41,10 @@ instance Applicative f => Applicative (Wrapper f) where
     (Value f)  <*> (Throw' g) = Throw' (f *> g)
 
 instance Applicative f => Alternative (Wrapper f) where
-     empty = Throw' (pure ())
-     (Throw' g) <|> (Value h) = Value (g *> h)
+     empty                     = Throw' (pure ())
+     (Throw' g) <|> (Value h)  = Value (g *> h)
      (Throw' g) <|> (Throw' h) = Throw' (g *> h)
-     (Value g)  <|> _ = Value g
+     (Value g)  <|> _          = Value g
 
 value :: f a -> Wrapper f a
 value  = Value
@@ -57,8 +57,9 @@ instance Exception RemoteMonadException
 -- | Can we dynamically extract the 'result' of a functor, without evaluation.
 
 class Result f where
-  result :: f a -> Maybe a
+  result :: f a -> R a
 
-class Convertible f g where
-  convert :: f a -> g a
-
+data R :: * -> * where
+  Pure    :: a -> R a
+  Command :: R ()
+  Unknown :: R a

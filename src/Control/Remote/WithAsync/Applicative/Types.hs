@@ -24,7 +24,7 @@ import            Control.Monad.Catch
 import            Control.Applicative
 import            Data.Typeable
 import            Control.Monad.Trans.Class
-import            Control.Remote.WithAsync.Util
+import qualified  Control.Remote.WithAsync.Util as U
 import qualified  Control.Remote.WithAsync.Packet.Applicative as AP
 
 data CP (c :: *) (p :: * -> *) a where
@@ -51,12 +51,13 @@ instance Alternative (RemoteApplicative p) where
    Empty <|> p = p
    m1 <|> m2   = Alt m1 m2
 
-instance Result (CP c p) where
-    result (Cmd a)  = return ()
-    result (Proc p) = fail "unknown result"
+instance U.Result (CP c p) where
+  result (Cmd a)  = U.Command
+  result (Proc p) = U.Unknown
 
-instance (Result cp) => Result (RemoteApplicative cp) where
-  result (Primitive p) = result p
-  result (Pure a)      = pure a
-  result (Ap g h)      = result g <*> result h
-  result (Alt g h)     = Nothing
+instance (U.Result cp) => U.Result (RemoteApplicative cp) where
+  result (Primitive p) = U.result p
+  result (Pure a)      = U.Pure a
+  result (Ap g h)      = undefined
+  result (Alt g h)     = undefined
+

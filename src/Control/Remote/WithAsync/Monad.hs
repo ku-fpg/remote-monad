@@ -143,7 +143,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
         Nothing ->  lift $ do
           HStrongPacket cs <- get
           put (HStrongPacket id)
-          r2 <- lift $ rf $ cs $ Strong.Primitive p
+          r2 <- lift $ rf $ cs $ Strong.Procedure p
 
           return $ r2
 

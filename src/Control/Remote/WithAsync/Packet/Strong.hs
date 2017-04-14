@@ -22,7 +22,8 @@ import           Control.Natural
 -- | A Strong Packet, that can encode a list of commands, terminated by an optional procedure.
 
 data StrongPacket (prim :: * -> *) (a :: *) where
-   Primitive :: prim a -> StrongPacket prim a
+   Command   :: prim () -> StrongPacket prim () -> StrongPacket prim ()
+   Procedure :: prim a -> StrongPacket prim a
    Done      ::           StrongPacket prim ()
 
 -- | A Hughes-style version of 'StrongPacket', with efficent append.

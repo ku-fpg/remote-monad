@@ -40,7 +40,7 @@ import           Control.Remote.WithAsync.Packet.Strong (StrongPacket, HStrongPa
 import qualified Control.Remote.WithAsync.Packet.Weak as Weak
 import           Control.Remote.WithAsync.Packet.Weak (WeakPacket)
 import           Control.Remote.WithAsync.Applicative.Types as T
-import           Control.Remote.WithAsync.Util as T
+import           Control.Remote.WithAsync.Util as U
 import           Control.Natural
 import           Control.Applicative
 import           Control.Monad.Catch
@@ -106,13 +106,14 @@ runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     go (T.Pure a)      = return a
     go (T.Primitive p) =
       case result p of
-        Just a  -> lift $ do
---                             modify $ \ (HStrongPacket cs) -> HStrongPacket (cs (Strong.Primitive p))
-                             return a
-        Nothing ->  lift $ do
+        Command -> lift $ do
+                             modify $ \ (HStrongPacket cs) -> HStrongPacket (cs  . Strong.Command  p)
+                             return ()
+
+        Unknown ->  lift $ do
                               HStrongPacket cs <- get
                               put (HStrongPacket id)
-                              r2 <- lift $ rf $ cs $ Strong.Primitive p
+                              r2 <- lift $ rf $ cs $ Strong.Procedure p
                               return $ r2
     go (T.Ap g h)      = go g <*> go h
     go (T.Alt g h)     = go g <|> go h
