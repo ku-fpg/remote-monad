@@ -5,11 +5,11 @@
 module Main where
 
 import Control.Natural
-import Control.Remote.WithoutAsync.Monad
-import Control.Remote.WithoutAsync.Packet.Weak        as WP
-import Control.Remote.WithoutAsync.Packet.Applicative as AP
-import Control.Remote.WithoutAsync.Packet.Query       as Q
-import Control.Remote.WithoutAsync.Packet.Alternative as Alt
+import Control.Remote.Monad
+import Control.Remote.Packet.Weak        as WP
+import Control.Remote.Packet.Applicative as AP
+import Control.Remote.Packet.Query       as Q
+import Control.Remote.Packet.Alternative as Alt
 import Control.Applicative
 import Control.Monad.Catch
 import Control.Exception hiding (catch)
@@ -18,24 +18,27 @@ data Query :: * -> * where
    Temperature ::           Query Int
    Say         :: String -> Query ()
 
+instance Result Query where
+  result _ = Nothing
+
 say :: String -> RemoteMonad Query ()
-say s = query (Say s)
+say s = primitive (Say s)
 
 temperature :: RemoteMonad Query Int
-temperature = query Temperature
+temperature = primitive Temperature
 
 
 --Server Side Functions
 ---------------------------------------------------------
 runWP ::  WeakPacket Query a -> IO a
-runWP (WP.Query (Say s))     = print s
-runWP (WP.Query Temperature) = do
+runWP (WP.Primitive (Say s))     = print s
+runWP (WP.Primitive Temperature) = do
                                  putStrLn "Temp Call"
                                  return 42
 ----------------------------------------------------------
 runAP :: ApplicativePacket Query a -> IO a
-runAP (AP.Query (Say s))     = print s
-runAP (AP.Query Temperature) = do
+runAP (AP.Primitive (Say s))     = print s
+runAP (AP.Primitive Temperature) = do
                                   putStrLn "Temp Call"
                                   return 42
 runAP (AP.Zip f g h)         = do
@@ -48,8 +51,8 @@ runQ :: QueryPacket Query a -> IO a
 runQ (QueryPacket pkt) = runAP pkt
 ---------------------------------------------------------
 runAlt :: AlternativePacket Query a -> IO a
-runAlt (Alt.Query (Say s)) = print s
-runAlt (Alt.Query Temperature) = do
+runAlt (Alt.Primitive (Say s))     = print s
+runAlt (Alt.Primitive Temperature) = do
                                   putStrLn "Temp Call"
                                   return 42
 runAlt (Alt.Zip f g h) = f <$> runAlt g <*> runAlt h
@@ -85,7 +88,7 @@ main = do
 
         putStrLn "\nQuerySend\n"
         runTest $ wrapNT sendQ
-        
+
         putStrLn "\nAltSend\n"
         runTest $ wrapNT sendAlt
 

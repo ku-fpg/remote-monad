@@ -9,4 +9,5 @@ cabal.config
 dist/
 TAGS
 tags
+codex.tags
 .stack-work

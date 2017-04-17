@@ -15,9 +15,9 @@ Portability: GHC
 module Control.Remote.Applicative
   ( -- * The remote applicative
     RemoteApplicative
+  , Result(..)
     -- * The primitive lift functions
-  , command
-  , procedure
+  , primitive
     -- * The run functions
   , RunApplicative(runApplicative)
   , runWeakApplicative
@@ -48,13 +48,8 @@ import           Control.Monad.Trans.Maybe
 
 
 -- | promote a command into the applicative
-command :: c -> RemoteApplicative (CP c p) ()
-command c = T.Primitive (Cmd c)
-
--- | promote a command into the applicative
-procedure :: p a -> RemoteApplicative (CP c p) a
-procedure p = T.Primitive (Proc p)
-
+primitive :: p a -> RemoteApplicative p a
+primitive prim = T.Primitive prim
 
 -- | 'RunApplicative' is the overloading for choosing the appropriate bundling strategy for applicative.
 class RunApplicative f where

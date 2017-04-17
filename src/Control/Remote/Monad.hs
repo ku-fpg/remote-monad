@@ -18,9 +18,9 @@ module Control.Remote.Monad
   ( -- * The remote monad
     RemoteMonad
   , RemoteMonadException(..)
+  , Result(..)
     -- * The primitive lift functions
-  , command
-  , procedure
+  , primitive
   , loop
     -- * The run functions
   , RunMonad(runMonad)
@@ -50,13 +50,8 @@ import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
 
 
--- | promote a command into the remote monad
-command :: c -> RemoteMonad (CP c p) ()
-command = Appl . A.command
-
--- | promote a procedure into the remote monad
-procedure :: p a -> RemoteMonad (CP c p) a
-procedure = Appl . A.procedure
+primitive :: p a -> RemoteMonad p a
+primitive = T.Appl . AT.Primitive
 
 loop :: forall a c p l . (a-> Bool) -> RemoteMonad p a -> RemoteMonad p a
 loop f m = do  res <- m
