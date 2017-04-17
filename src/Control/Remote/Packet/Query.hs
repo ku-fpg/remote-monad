@@ -9,18 +9,18 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithoutAsync.Packet.Query
+module Control.Remote.Packet.Query
   ( -- * The remote applicative
     QueryPacket(..)
   ) where
 
-import           Control.Remote.WithoutAsync.Packet.Applicative
+import           Control.Remote.Packet.Applicative
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State.Strict
 
 import           Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.
-newtype QueryPacket p a = QueryPacket (ApplicativePacket p a)
+newtype QueryPacket prim a = QueryPacket (ApplicativePacket prim a)
   deriving (Functor, Applicative)
 

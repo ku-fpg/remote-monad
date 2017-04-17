@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-|
-Module:      Control.Remote.WithAsync.Applicative.Types
+Module:      Control.Remote.Applicative.Types
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Applicative.Types
+module Control.Remote.Applicative.Types
   ( RemoteApplicative(..)
   , CP(..)
   ) where
@@ -24,8 +24,8 @@ import            Control.Monad.Catch
 import            Control.Applicative
 import            Data.Typeable
 import            Control.Monad.Trans.Class
-import            Control.Remote.WithAsync.Util
-import qualified  Control.Remote.WithAsync.Packet.Applicative as AP
+import            Control.Remote.Util
+import qualified  Control.Remote.Packet.Applicative as AP
 
 data CP (c :: *) (p :: * -> *) a where
   Cmd   :: c   -> CP c p ()
@@ -43,7 +43,7 @@ instance Functor (RemoteApplicative p) where
   fmap f g = pure f <*> g
 
 instance Applicative (RemoteApplicative p) where
-  pure a = Pure a
+  pure  = Pure
   (<*>) = Ap
 
 instance Alternative (RemoteApplicative p) where

@@ -1,12 +1,11 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
 {-|
-Module:      Control.Remote.WithAsync.Util
+Module:      Control.Remote.Util
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -14,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Util
+module Control.Remote.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   , Result(..)
@@ -31,7 +30,7 @@ data Wrapper f a where
     Throw' :: f () -> Wrapper f a
 
 instance Applicative f => Functor (Wrapper f) where
-    fmap f g = (pure f)<*> g
+    fmap f g = pure f <*> g
 
 instance Applicative f => Applicative (Wrapper f) where
     pure a = Value $ pure a

@@ -5,7 +5,7 @@
 {-# LANGUAGE StandaloneDeriving #-}
 
 {-|
-Module:      Control.Remote.WithAsync.Monad.Packet.Weak
+Module:      Control.Remote.Monad.Packet.Weak
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,11 +13,8 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Packet.Weak where
-
-import Control.Remote.WithAsync.Packet.Transport 
+module Control.Remote.Packet.Weak where
 
 data WeakPacket (cp :: * -> * ) (a :: *) where
    Primitive :: cp a -> WeakPacket cp a
 
---deriving instance (Show (cp c p a)) => Show (WeakPacket cp a)

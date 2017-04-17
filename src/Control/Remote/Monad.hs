@@ -14,7 +14,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Monad
+module Control.Remote.Monad
   ( -- * The remote monad
     RemoteMonad
   , RemoteMonadException(..)
@@ -34,15 +34,15 @@ module Control.Remote.WithAsync.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
-import qualified Control.Remote.WithAsync.Applicative as A
-import           Control.Remote.WithAsync.Packet.Applicative as A
-import qualified Control.Remote.WithAsync.Packet.Alternative as Alt
-import           Control.Remote.WithAsync.Packet.Weak as Weak
-import           Control.Remote.WithAsync.Packet.Query as Q
-import           Control.Remote.WithAsync.Packet.Strong as Strong
-import           Control.Remote.WithAsync.Monad.Types as T
-import           Control.Remote.WithAsync.Applicative.Types as AT
-import           Control.Remote.WithAsync.Util
+import qualified Control.Remote.Applicative as A
+import           Control.Remote.Packet.Applicative as A
+import qualified Control.Remote.Packet.Alternative as Alt
+import           Control.Remote.Packet.Weak as Weak
+import           Control.Remote.Packet.Query as Q
+import           Control.Remote.Packet.Strong as Strong
+import           Control.Remote.Monad.Types as T
+import           Control.Remote.Applicative.Types as AT
+import           Control.Remote.Util
 
 import           Control.Applicative
 import           Control.Natural
@@ -166,7 +166,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
     (r,h) <-  runStateT (runMaybeT (go2 (reWrite q))) (pure ())
     case  pk h of -- should we stub out the call with only 'Pure'?
       Pure' a ->  return a
-      Pkt f b ->  do res <- rf $ b
+      Pkt f b ->  do res <- rf b
                      return $ f res
     case r of
       Nothing -> throwM RemoteEmptyException
@@ -184,11 +184,11 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
     go :: forall a . RemoteApplicative prim a -> Wrapper (RemoteApplicative prim) a
-    go (AT.Empty)   = empty
+    go  AT.Empty    = empty
     go (AT.Pure a)  = pure a
-    go (AT.Primitive q) = Value (AT.Primitive q)
-    go (AT.Ap g h)  = (go g) <*> (go h)
-    go (AT.Alt g h) = (go g) <|> (go h)
+    go (AT.Primitive q) = Value $ AT.Primitive q
+    go (AT.Ap g h)  = go g <*> go h
+    go (AT.Alt g h) = go g <|> go h
 
     -- g is a function that will take the current state as input
     discharge :: forall a f . Applicative f => (f () ->RemoteApplicative prim a )-> StateT (f ()) m a
@@ -203,14 +203,13 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
     -- Given a wrapped applicative discharge via local monad
     unwrap :: forall a . Wrapper(RemoteApplicative prim) a -> StateT (RemoteApplicative prim ()) m a
     unwrap (Value ap) = case result ap of
-                            Nothing ->do
-                                      discharge $ \ap' -> (ap' *> ap)
+                            Nothing -> discharge $ \ap' -> ap' *> ap
                             Just a  ->do
-                                       modify (\ap' -> ap' <* ap)
+                                       modify $ \ap' -> ap' <* ap
                                        return a
 
     unwrap (Throw' ap) = do
-                         discharge $ \ap' -> (ap' <* ap)
+                         discharge $ \ap' -> ap' <* ap
                          throwM RemoteEmptyException
 
 -- | The is the strong applicative remote monad. It bundles
@@ -239,8 +238,8 @@ runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
     pk (AT.Primitive p) = Pkt id $ QueryPacket $ A.Primitive p
     pk (AT.Ap g h)  = case (pk g, pk h) of
                        (Pure' a, Pure' b)   -> Pure' (a b)
-                       (Pure' a, Pkt f b)   -> Pkt (\b' -> a (f b')) b
-                       (Pkt f a, Pure' b)   -> Pkt (\a' -> f a' b) a
+                       (Pure' a, Pkt f b)   -> Pkt (a . f ) b
+                       (Pkt f a, Pure' b)   -> Pkt (`f` b ) a
                        (Pkt f (QueryPacket a), Pkt g (QueryPacket b)) -> Pkt id $ QueryPacket $ A.Zip (\ a' b' -> f a' (g b')) a b
 
     helper:: RemoteMonad prim a -> RemoteMonad prim a
@@ -248,11 +247,11 @@ runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
     helper (Ap' (Bind m1 k1) (Bind m2 k2) ) = liftA2 (,)  (helper m1) (helper m2) >>=
                                                   \(x1,x2) ->helper ( k1 x1) <*> helper (k2 x2)
     helper (Ap' (Bind m1 k1) app)           = liftA2 (,) (helper m1) (helper app) >>=
-                                                  \(x1,x2) -> helper (k1 x1) <*> (pure x2)
+                                                  \(x1,x2) -> helper (k1 x1) <*> pure x2
     helper (Ap' (Ap' app (Bind m1 k1))   (Bind m2 k2))  =
       liftA3 (,,) (helper app) (helper m1) (helper  m2) >>=
           \(x1,x2,x3) -> (pure x1 <*> k1 x2) <*> helper (k2 x3)
-    helper (Bind m k) =  (helper m) >>= \ x -> helper (k x)
+    helper (Bind m k) =  helper m >>= \ x -> helper (k x)
     helper x = x
 
 runAlternativeMonad :: forall m prim . (MonadCatch m, Result prim) => (Alt.AlternativePacket prim :~> m) -> (RemoteMonad prim :~> m)

@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.WithAsync.Monad.Packet.Alternative
+Module:      Control.Remote.Monad.Packet.Alternative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Packet.Alternative
+module Control.Remote.Packet.Alternative
   ( -- * The remote applicative
     AlternativePacket(..)
   ) where
@@ -23,7 +23,7 @@ import Control.Applicative
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
-import qualified Control.Remote.WithAsync.Packet.Strong as Strong
+import qualified Control.Remote.Packet.Strong as Strong
 import Control.Natural
 
 
@@ -33,9 +33,9 @@ import Control.Natural
 data AlternativePacket (cp :: * -> *) (a :: *) where
    Primitive :: cp     a                 -> AlternativePacket cp a
    Zip       :: (x -> y -> z)
-             -> AlternativePacket cp x 
+             -> AlternativePacket cp x
              -> AlternativePacket cp y   -> AlternativePacket cp z
-   Pure      :: a                        -> AlternativePacket cp a  
+   Pure      :: a                        -> AlternativePacket cp a
    Alt       :: AlternativePacket cp a
              -> AlternativePacket cp a   -> AlternativePacket cp a
    Empty     ::                             AlternativePacket cp a

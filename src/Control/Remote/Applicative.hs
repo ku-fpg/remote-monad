@@ -1,11 +1,10 @@
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.WithAsync.Applicative
+Module:      Control.Remote.Applicative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +12,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Applicative
+module Control.Remote.Applicative
   ( -- * The remote applicative
     RemoteApplicative
     -- * The primitive lift functions
@@ -33,15 +32,15 @@ import Control.Monad.Trans.State.Strict
 import Control.Monad.Identity
 import Control.Category ((>>>))
 
-import           Control.Remote.WithAsync.Packet.Applicative as A
-import           Control.Remote.WithAsync.Packet.Alternative as Alt
-import qualified Control.Remote.WithAsync.Packet.Query as Q
-import qualified Control.Remote.WithAsync.Packet.Strong as Strong
-import           Control.Remote.WithAsync.Packet.Strong (StrongPacket, HStrongPacket(..))
-import qualified Control.Remote.WithAsync.Packet.Weak as Weak
-import           Control.Remote.WithAsync.Packet.Weak (WeakPacket)
-import           Control.Remote.WithAsync.Applicative.Types as T
-import           Control.Remote.WithAsync.Util as U
+import           Control.Remote.Packet.Applicative as A
+import           Control.Remote.Packet.Alternative as Alt
+import qualified Control.Remote.Packet.Query as Q
+import qualified Control.Remote.Packet.Strong as Strong
+import           Control.Remote.Packet.Strong (StrongPacket, HStrongPacket(..))
+import qualified Control.Remote.Packet.Weak as Weak
+import           Control.Remote.Packet.Weak (WeakPacket)
+import           Control.Remote.Applicative.Types as T
+import           Control.Remote.Util as U
 import           Control.Natural
 import           Control.Applicative
 import           Control.Monad.Catch
@@ -79,7 +78,7 @@ instance RunApplicative AlternativePacket where
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
 runWeakApplicative :: forall m prim. (MonadThrow m, Result prim) => (WeakPacket prim :~> m) -> (RemoteApplicative prim :~> m)
-runWeakApplicative (NT rf) = wrapNT $ go
+runWeakApplicative (NT rf) = wrapNT go
   where
     go :: forall a . RemoteApplicative prim a ->  m a
     go p = do r <- runMaybeT (go2 p)
@@ -92,7 +91,7 @@ runWeakApplicative (NT rf) = wrapNT $ go
     go2 (T.Ap g h)         = go2 g <*> go2 h
     go2 (T.Pure      a)    = pure a
     go2 T.Empty            = empty
-    go2 (T.Alt g h)        = (go2 g <|> go2 h)
+    go2 (T.Alt g h)        = go2 g <|> go2 h
 {-
 -- | The strong remote applicative, that bundles together commands.
 runStrongApplicative :: forall m prim . (MonadThrow m, Result prim) => (StrongPacket prim :~> m) -> (RemoteApplicative prim :~> m)
@@ -126,11 +125,11 @@ runApplicativeApplicative :: forall m prim . (MonadThrow m) => (ApplicativePacke
 runApplicativeApplicative (NT rf) = wrapNT (go4 . go3)
   where
     go3 :: forall a . RemoteApplicative prim a -> Wrapper (ApplicativePacket prim) a
-    go3 (T.Empty)       = empty   --uses Throw'
+    go3  T.Empty        = empty   --uses Throw'
     go3 (T.Pure a)      = pure a
     go3 (T.Primitive p) = Value (A.Primitive p)
-    go3 (T.Ap g h)      = (go3 g) <*> (go3 h)
-    go3 (T.Alt g h)     = (go3 g) <|> (go3 h)
+    go3 (T.Ap g h)      = go3 g <*> go3 h
+    go3 (T.Alt g h)     = go3 g <|> go3 h
 
     go4 :: forall a . Wrapper (ApplicativePacket prim) a -> m a
     go4 (Value pkt)  = rf pkt
@@ -142,11 +141,11 @@ runQueryApplicative :: forall m q . (MonadThrow m) => (Q.QueryPacket q :~> m) ->
 runQueryApplicative (NT rf) = wrapNT (go4 . go3)
   where
     go3 :: forall a . RemoteApplicative q a -> Wrapper (Q.QueryPacket q) a
-    go3 (T.Empty)   = empty   --uses Throw'
+    go3  T.Empty    = empty   --uses Throw'
     go3 (T.Pure a)  = pure a
     go3 (T.Primitive q) = Value (Q.QueryPacket (A.Primitive q))
-    go3 (T.Ap g h)  = (go3 g) <*> (go3 h)
-    go3 (T.Alt g h) = (go3 g) <|> (go3 h)
+    go3 (T.Ap g h)  = go3 g <*> go3 h
+    go3 (T.Alt g h) = go3 g <|> go3 h
 
     go4 :: forall a . Wrapper (Q.QueryPacket q) a -> m a
     go4 (Value pkt)  = rf pkt
@@ -159,10 +158,10 @@ runAlternativeApplicative :: forall m prim . (MonadThrow m) => (AlternativePacke
 runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
    where
       go :: forall a . RemoteApplicative prim a -> AlternativePacket prim a
-      go (T.Empty)               = Alt.Empty
+      go  T.Empty                = Alt.Empty
       go (T.Pure a)              = pure a
       go (T.Primitive p)         = Alt.Primitive p
-      go (T.Ap g h)              = (go g) <*> (go h)
-      go (T.Alt g h)             = (go g) <|> (go h)
+      go (T.Ap g h)              = go g <*> go h
+      go (T.Alt g h)             = go g <|> go h
 
 

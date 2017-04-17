@@ -14,8 +14,8 @@ description:
     module Main where
     .
     import Control.Natural (nat, (#))
-    import Control.Remote.WithAsync.Monad
-    import Control.Remote.WithAsync.Packet.Weak        
+    import Control.Remote.Monad
+    import Control.Remote.Packet.Weak        
     .
     data Command :: * where
     &#32;&#32;Say :: String -> Command
@@ -42,7 +42,6 @@ description:
     &#32;&#32;t <- temperature
     &#32;&#32;say (show t ++ &#34;F&#34;)
   @
-  . WithAsync is meant to be used when order matters because the primitives can change the remote state. WithoutAsync is used if remote primitives are read-only.
 
 license:             BSD3
 license-file:        LICENSE
@@ -60,30 +59,17 @@ source-repository head
 
 library
   exposed-modules:
-                       Control.Remote.WithoutAsync.Packet.Alternative
-                       Control.Remote.WithoutAsync.Packet.Applicative
-                       Control.Remote.WithoutAsync.Packet.Query
-                       Control.Remote.WithoutAsync.Packet.Weak
-                       Control.Remote.WithoutAsync.Packet
-                       Control.Remote.WithoutAsync.Packet.Transport
-                       Control.Remote.WithoutAsync.Applicative
-                       Control.Remote.WithoutAsync.Applicative.Types
-                       Control.Remote.WithoutAsync.Monad
-                       Control.Remote.WithoutAsync.Monad.Types
-                       Control.Remote.WithoutAsync.Util
-
-                       Control.Remote.WithAsync.Packet.Alternative
-                       Control.Remote.WithAsync.Packet.Applicative
-                       Control.Remote.WithAsync.Packet.Query
-                       Control.Remote.WithAsync.Packet.Strong
-                       Control.Remote.WithAsync.Packet.Weak
-                       Control.Remote.WithAsync.Packet
-                       Control.Remote.WithAsync.Packet.Transport
-                       Control.Remote.WithAsync.Applicative
-                       Control.Remote.WithAsync.Applicative.Types
-                       Control.Remote.WithAsync.Monad
-                       Control.Remote.WithAsync.Monad.Types
-                       Control.Remote.WithAsync.Util
+                       Control.Remote.Packet.Alternative
+                       Control.Remote.Packet.Applicative
+                       Control.Remote.Packet.Query
+                       Control.Remote.Packet.Strong
+                       Control.Remote.Packet.Weak
+                       Control.Remote.Packet
+                       Control.Remote.Applicative
+                       Control.Remote.Applicative.Types
+                       Control.Remote.Monad
+                       Control.Remote.Monad.Types
+                       Control.Remote.Util
 
   other-modules:
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables

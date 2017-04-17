@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.WithAsync.Monad.Packet.Applicative
+Module:      Control.Remote.Monad.Packet.Applicative
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -13,7 +13,7 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Packet.Applicative
+module Control.Remote.Packet.Applicative
   ( -- * The remote applicative
     ApplicativePacket(..)
   ) where
@@ -22,7 +22,7 @@ module Control.Remote.WithAsync.Packet.Applicative
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State.Strict
 
-import qualified Control.Remote.WithAsync.Packet.Strong as Strong
+import qualified Control.Remote.Packet.Strong as Strong
 import Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.

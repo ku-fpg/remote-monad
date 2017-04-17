@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 {-|
-Module:      Control.Remote.WithAsync.Monad.Packet.Strong
+Module:      Control.Remote.Monad.Packet.Strong
 Copyright:   (C) 2016, The University of Kansas
 License:     BSD-style (see the file LICENSE)
 Maintainer:  Andy Gill
@@ -12,10 +12,10 @@ Stability:   Alpha
 Portability: GHC
 -}
 
-module Control.Remote.WithAsync.Packet.Strong where
+module Control.Remote.Packet.Strong where
 
-import qualified Control.Remote.WithAsync.Packet.Weak as Weak
-import           Control.Remote.WithAsync.Packet.Weak (WeakPacket)
+import qualified Control.Remote.Packet.Weak as Weak
+import           Control.Remote.Packet.Weak (WeakPacket)
 import           Control.Natural
 
 
