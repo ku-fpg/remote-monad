@@ -18,7 +18,6 @@ module Control.Remote.WithAsync.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   , Result(..)
-  , R(..)
   ) where
 
 
@@ -57,9 +56,4 @@ instance Exception RemoteMonadException
 -- | Can we dynamically extract the 'result' of a functor, without evaluation.
 
 class Result f where
-  result :: f a -> R a
-
-data R :: * -> * where
-  Pure    :: a -> R a
-  Command :: R ()
-  Unknown :: R a
+  result :: f a -> Maybe a

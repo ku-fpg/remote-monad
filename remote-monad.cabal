@@ -74,6 +74,7 @@ library
 
                        Control.Remote.WithAsync.Packet.Alternative
                        Control.Remote.WithAsync.Packet.Applicative
+                       Control.Remote.WithAsync.Packet.Query
                        Control.Remote.WithAsync.Packet.Strong
                        Control.Remote.WithAsync.Packet.Weak
                        Control.Remote.WithAsync.Packet
