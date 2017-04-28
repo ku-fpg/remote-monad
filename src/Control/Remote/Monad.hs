@@ -18,7 +18,7 @@ module Control.Remote.Monad
   ( -- * The remote monad
     RemoteMonad
   , RemoteMonadException(..)
-  , Result(..)
+  , KnownResult(..)
     -- * The primitive lift functions
   , primitive
   , loop
@@ -69,7 +69,7 @@ data X (f :: ( * -> *) -> * -> *) p a where
 class RunMonad f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runMonad :: (MonadCatch m, Result prim) => (f prim :~> m) -> (RemoteMonad prim :~> m)
+  runMonad :: (MonadCatch m, KnownResult prim) => (f prim :~> m) -> (RemoteMonad prim :~> m)
 
 instance RunMonad WeakPacket where
   runMonad = runWeakMonad
@@ -92,7 +92,7 @@ instance RunMonad Q.QueryPacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (MonadCatch m, Result prim) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
+runMonadSkeleton :: (MonadCatch m, KnownResult prim) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
 runMonadSkeleton f = wrapNT $ \ case
   Appl g   -> unwrapNT f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # k a
@@ -107,14 +107,14 @@ runMonadSkeleton f = wrapNT $ \ case
 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
-runWeakMonad :: (MonadCatch m, Result prim) => (WeakPacket prim :~> m) -> (RemoteMonad prim :~> m)
+runWeakMonad :: (MonadCatch m, KnownResult prim) => (WeakPacket prim :~> m) -> (RemoteMonad prim :~> m)
 runWeakMonad = runMonadSkeleton . A.runWeakApplicative
 
 {-
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'StrongPacket') as large as possible,
 --   including over some monadic binds.
-runStrongMonad :: forall m prim . (MonadCatch m, Result prim) => (StrongPacket prim :~> m) -> (RemoteMonad prim :~> m)
+runStrongMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (StrongPacket prim :~> m) -> (RemoteMonad prim :~> m)
 runStrongMonad (NT rf) = wrapNT $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go2 p)) (HStrongPacket id)
     rf $ h $ Strong.Done
@@ -134,10 +134,10 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
-    go :: forall a . (Result prim) =>  RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
+    go :: forall a . (KnownResult prim) =>  RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
     go (AT.Pure a)      = return a
     go (AT.Primitive p) =
-      case result p of
+      case knownResult p of
         Just a -> lift $ do
           modify $ (\ (HStrongPacket cs) -> HStrongPacket (cs (Strong.Primitive p) ))
           return a
@@ -154,7 +154,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
 -}
 type PreProcessor q = RemoteMonad q :~> RemoteMonad q
 
-runApplicativeBase :: forall f m prim . (MonadCatch m, Result prim) => (f prim :~> m)
+runApplicativeBase :: forall f m prim . (MonadCatch m, KnownResult prim) => (f prim :~> m)
                -> (RemoteApplicative prim :~> X f prim)
                -> PreProcessor prim -> (RemoteMonad prim :~> m)
 runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
@@ -197,7 +197,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
                                     return $ f res
     -- Given a wrapped applicative discharge via local monad
     unwrap :: forall a . Wrapper(RemoteApplicative prim) a -> StateT (RemoteApplicative prim ()) m a
-    unwrap (Value ap) = case result ap of
+    unwrap (Value ap) = case knownResult ap of
                             Nothing -> discharge $ \ap' -> ap' *> ap
                             Just a  ->do
                                        modify $ \ap' -> ap' <* ap
@@ -210,7 +210,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
 -- | The is the strong applicative remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible,
 --   including over some monadic binds.
-runApplicativeMonad :: forall m prim . (MonadCatch m, Result prim) => (A.ApplicativePacket prim :~> m) -> (RemoteMonad prim :~> m)
+runApplicativeMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (A.ApplicativePacket prim :~> m) -> (RemoteMonad prim :~> m)
 runApplicativeMonad f = runApplicativeBase f (wrapNT pk) (wrapNT id)
   where
     -- Either A or a Packet to return A
@@ -224,7 +224,7 @@ runApplicativeMonad f = runApplicativeBase f (wrapNT pk) (wrapNT id)
                            (Pkt f a, Pkt g b)   -> Pkt id $ A.Zip (\ a' b' -> f a' (g b')) a b
 
 -- |
-runQueryMonad :: forall m prim . (MonadCatch m, Result prim) => (Q.QueryPacket prim :~> m) -> (RemoteMonad prim :~> m)
+runQueryMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (Q.QueryPacket prim :~> m) -> (RemoteMonad prim :~> m)
 runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
   where
     -- Either A or a Packet to return A
@@ -249,7 +249,7 @@ runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
     helper (Bind m k) =  helper m >>= \ x -> helper (k x)
     helper x = x
 
-runAlternativeMonad :: forall m prim . (MonadCatch m, Result prim) => (Alt.AlternativePacket prim :~> m) -> (RemoteMonad prim :~> m)
+runAlternativeMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (Alt.AlternativePacket prim :~> m) -> (RemoteMonad prim :~> m)
 runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
    (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ())
    () <- rf $ pk h
@@ -270,7 +270,7 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
     go :: forall a .  RemoteApplicative prim a -> StateT (RemoteApplicative prim ()) m a
-    go ap = case result ap of
+    go ap = case knownResult ap of
                Nothing -> discharge $ \ ap' -> ap' *> ap
                Just a  -> do
                           modify $ \ap' -> ap' <* ap

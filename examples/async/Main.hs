@@ -20,9 +20,9 @@ data MyProc :: * -> * where
   Temperature :: MyProc Int
 
 
-instance Result MyProc where
-  result (Say s)       = pure ()
-  result (Temperature) = Nothing
+instance KnownResult MyProc where
+  knownResult (Say s)       = pure ()
+  knownResult (Temperature) = Nothing
 
 say :: String -> RemoteMonad MyProc ()
 say s = primitive (Say s)

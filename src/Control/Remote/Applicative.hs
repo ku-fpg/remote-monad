@@ -15,7 +15,7 @@ Portability: GHC
 module Control.Remote.Applicative
   ( -- * The remote applicative
     RemoteApplicative
-  , Result(..)
+  , KnownResult(..)
     -- * The primitive lift functions
   , primitive
     -- * The run functions
@@ -56,7 +56,7 @@ class RunApplicative f where
 
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runApplicative :: forall m prim . (MonadThrow m, Result prim) => (f prim :~> m) -> (RemoteApplicative prim :~> m)
+  runApplicative :: forall m prim . (MonadThrow m, KnownResult prim) => (f prim :~> m) -> (RemoteApplicative prim :~> m)
 
 
 instance RunApplicative WeakPacket where
@@ -72,7 +72,7 @@ instance RunApplicative AlternativePacket where
   runApplicative = runAlternativeApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
-runWeakApplicative :: forall m prim. (MonadThrow m, Result prim) => (WeakPacket prim :~> m) -> (RemoteApplicative prim :~> m)
+runWeakApplicative :: forall m prim. (MonadThrow m, KnownResult prim) => (WeakPacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runWeakApplicative (NT rf) = wrapNT go
   where
     go :: forall a . RemoteApplicative prim a ->  m a

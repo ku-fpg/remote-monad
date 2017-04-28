@@ -16,7 +16,7 @@ Portability: GHC
 module Control.Remote.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
-  , Result(..)
+  , KnownResult(..)
   ) where
 
 
@@ -54,5 +54,6 @@ instance Exception RemoteMonadException
 
 -- | Can we dynamically extract the 'result' of a functor, without evaluation.
 
-class Result f where
-  result :: f a -> Maybe a
+class KnownResult f where
+  knownResult :: f a -> Maybe a
+  knownResult _ = Nothing

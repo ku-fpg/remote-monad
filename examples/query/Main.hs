@@ -18,8 +18,8 @@ data Query :: * -> * where
    Temperature ::           Query Int
    Say         :: String -> Query ()
 
-instance Result Query where
-  result _ = Nothing
+instance KnownResult Query where
+  knownResult _ = Nothing
 
 say :: String -> RemoteMonad Query ()
 say s = primitive (Say s)

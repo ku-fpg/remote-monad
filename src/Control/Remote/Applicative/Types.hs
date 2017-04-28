@@ -51,13 +51,13 @@ instance Alternative (RemoteApplicative p) where
    Empty <|> p = p
    m1 <|> m2   = Alt m1 m2
 
-instance Result (CP c p) where
-  result (Cmd a)  = Just ()
-  result (Proc p) = Nothing
+instance KnownResult (CP c p) where
+  knownResult (Cmd a)  = Just ()
+  knownResult (Proc p) = Nothing
 
-instance (Result cp) => Result (RemoteApplicative cp) where
-  result (Primitive p) = result p
-  result (Pure a)      = pure a
-  result (Ap g h)      = result g <*> result h
-  result (Alt g h)     = result g <|> result h
+instance (KnownResult cp) => KnownResult (RemoteApplicative cp) where
+  knownResult (Primitive p) = knownResult p
+  knownResult (Pure a)      = pure a
+  knownResult (Ap g h)      = knownResult g <*> knownResult h
+  knownResult (Alt g h)     = knownResult g <|> knownResult h
 
