@@ -157,9 +157,9 @@ data P :: * -> * where
   Push :: Integer -> P ()
   Pop  :: P (Maybe Integer)
 
-instance A.Result P where
-  result (Push a) = Just ()
-  result Pop      = Nothing
+instance A.KnownResult P where
+  knownResult (Push a) = Just ()
+  knownResult Pop      = Nothing
 
 
 -- Basic evaluator
