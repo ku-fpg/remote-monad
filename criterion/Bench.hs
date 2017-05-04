@@ -183,7 +183,6 @@ runWP ref (WP.Primitive (Pop)) = do
 -- runSP ref SP.Done             = pure ()
 
 runAppP :: IORef [Integer] -> ApplicativePacket P a -> IO a
-runAppP ref (AP.Primitive   c) = runWP ref (WP.Primitive c)
 runAppP ref (AP.Primitive p) = runWP ref (WP.Primitive p)
 runAppP ref (AP.Pure a)      = pure a
 runAppP ref (AP.Zip f g h)   = f <$> runAppP ref g <*> runAppP ref h
