@@ -7,7 +7,7 @@ module Main where
 import Control.Natural
 import Control.Remote.Monad as T
 import qualified Control.Remote.Packet.Weak as WP
-import qualified Control.Remote.Packet.Strong as SP
+--import qualified Control.Remote.Packet.Strong as SP
 import qualified Control.Remote.Packet.Applicative as AP
 import qualified Control.Remote.Packet.Alternative as Alt
 import Control.Applicative
@@ -21,7 +21,7 @@ data MyProc :: * -> * where
 
 
 instance KnownResult MyProc where
-  knownResult (Say s)       = pure ()
+  knownResult (Say _s)       = pure ()
   knownResult (Temperature) = Nothing
 
 say :: String -> RemoteMonad MyProc ()
