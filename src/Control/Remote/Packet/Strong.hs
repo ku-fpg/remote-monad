@@ -1,7 +1,7 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs          #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE RankNTypes     #-}
+{-# LANGUAGE TypeOperators  #-}
 
 {-|
 Module:      Control.Remote.Monad.Packet.Strong
@@ -14,8 +14,6 @@ Portability: GHC
 
 module Control.Remote.Packet.Strong where
 
-import qualified Control.Remote.Packet.Weak as Weak
-import           Control.Remote.Packet.Weak (WeakPacket)
 import           Control.Natural
 
 

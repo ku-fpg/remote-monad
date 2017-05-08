@@ -1,8 +1,8 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators       #-}
 
 {-|
 Module:      Control.Remote.Monad,Types
@@ -18,13 +18,9 @@ module Control.Remote.Monad.Types
   ) where
 
 
-import            Control.Natural
-import            Control.Monad.Catch
-import            Control.Applicative
-import            Data.Typeable
-import            Control.Monad.Trans.Class
-import            Control.Remote.Applicative.Types
-import            Control.Remote.Util
+import           Control.Applicative
+import           Control.Monad.Catch
+import           Control.Remote.Applicative.Types
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
 data RemoteMonad  p a where
@@ -45,10 +41,10 @@ instance  Applicative (RemoteMonad p) where
   f        <*> g        = Ap' f g
 
 instance Monad (RemoteMonad p) where
-  return      = pure
-  m >>= k     = Bind m k
-  Empty' >> m2 = Empty'
-  m1 >> m2    = m1 *> m2 -- This improves our bundling opportunities
+  return        = pure
+  m >>= k       = Bind m k
+  Empty' >> _m2 = Empty'
+  m1 >> m2      = m1 *> m2 -- This improves our bundling opportunities
 
 instance MonadThrow (RemoteMonad p) where
     throwM e = Throw e

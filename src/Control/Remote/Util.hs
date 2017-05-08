@@ -1,8 +1,8 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs                 #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
 
 {-|
 Module:      Control.Remote.Util
@@ -17,12 +17,13 @@ module Control.Remote.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   , KnownResult(..)
+  , value
   ) where
 
 
-import            Control.Monad.Catch
-import            Control.Applicative
-import            Data.Typeable
+import           Control.Applicative
+import           Control.Monad.Catch
+import           Data.Typeable
 
 
 data Wrapper f a where
@@ -35,7 +36,7 @@ instance Applicative f => Functor (Wrapper f) where
 instance Applicative f => Applicative (Wrapper f) where
     pure a = Value $ pure a
     (Value f) <*> (Value g) = Value (f <*> g)
-    (Throw' f) <*> g = Throw' f
+    (Throw' f) <*> _ = Throw' f
     (Value f)  <*> (Throw' g) = Throw' (f *> g)
 
 instance Applicative f => Alternative (Wrapper f) where

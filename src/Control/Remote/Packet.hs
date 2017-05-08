@@ -1,7 +1,7 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators       #-}
 {-|
 Module:      Control.Remote.Monad.Packet
 Copyright:   (C) 2016, The University of Kansas
@@ -18,12 +18,12 @@ module Control.Remote.Packet
   , promoteToApplicative
   , promoteToAlternative
   ) where
-import qualified Control.Remote.Packet.Weak as Weak
-import qualified Control.Remote.Packet.Strong as Strong
-import qualified Control.Remote.Packet.Applicative as A
-import qualified Control.Remote.Packet.Alternative as Alt
-import           Control.Natural
+import qualified Control.Remote.Packet.Weak        as Weak
+--import qualified Control.Remote.Packet.Strong as Strong
 import           Control.Applicative
+import           Control.Natural
+import qualified Control.Remote.Packet.Alternative as Alt
+import qualified Control.Remote.Packet.Applicative as A
 
 class Promote f where
     promote :: (Applicative m) => (Weak.WeakPacket p :~> m) -> (f p :~> m)
@@ -40,6 +40,7 @@ promoteToAlternative (NT f) =  NT alternativeFunc
                         alternativeFunc (Alt.Zip f1 a b)  = f1 <$> alternativeFunc a <*> alternativeFunc b
                         alternativeFunc (Alt.Alt a b)     = alternativeFunc a <|> alternativeFunc b
                         alternativeFunc (Alt.Pure a)      = pure a
+                        alternativeFunc  Alt.Empty        = empty
 
 
 -- | promotes a function that can work over WeakPackets to a function that can work over Applicative Packets

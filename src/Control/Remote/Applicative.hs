@@ -1,7 +1,7 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators       #-}
 
 {-|
 Module:      Control.Remote.Applicative
@@ -27,24 +27,21 @@ module Control.Remote.Applicative
   ) where
 
 
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.State.Strict
-import Control.Monad.Identity
-import Control.Category ((>>>))
+import           Control.Monad.Trans.Class
 
-import           Control.Remote.Packet.Applicative as A
 import           Control.Remote.Packet.Alternative as Alt
-import qualified Control.Remote.Packet.Query as Q
-import qualified Control.Remote.Packet.Strong as Strong
-import           Control.Remote.Packet.Strong (StrongPacket, HStrongPacket(..))
-import qualified Control.Remote.Packet.Weak as Weak
-import           Control.Remote.Packet.Weak (WeakPacket)
-import           Control.Remote.Applicative.Types as T
-import           Control.Remote.Util as U
-import           Control.Natural
+import           Control.Remote.Packet.Applicative as A
+import qualified Control.Remote.Packet.Query       as Q
+--import qualified Control.Remote.Packet.Strong as Strong
+--import           Control.Remote.Packet.Strong (StrongPacket, HStrongPacket(..))
 import           Control.Applicative
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
+import           Control.Natural
+import           Control.Remote.Applicative.Types  as T
+import           Control.Remote.Packet.Weak        (WeakPacket)
+import qualified Control.Remote.Packet.Weak        as Weak
+import           Control.Remote.Util               as U
 
 
 -- | promote a command into the applicative
@@ -70,6 +67,9 @@ instance RunApplicative ApplicativePacket where
 
 instance RunApplicative AlternativePacket where
   runApplicative = runAlternativeApplicative
+
+instance RunApplicative Q.QueryPacket where
+  runApplicative = runQueryApplicative
 
 -- | The weak remote applicative, that sends commands and procedures piecemeal.
 runWeakApplicative :: forall m prim. (MonadThrow m, KnownResult prim) => (WeakPacket prim :~> m) -> (RemoteApplicative prim :~> m)

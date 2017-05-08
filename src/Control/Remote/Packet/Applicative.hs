@@ -1,8 +1,8 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators       #-}
 
 {-|
 Module:      Control.Remote.Monad.Packet.Applicative
@@ -17,13 +17,6 @@ module Control.Remote.Packet.Applicative
   ( -- * The remote applicative
     ApplicativePacket(..)
   ) where
-
-
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.State.Strict
-
-import qualified Control.Remote.Packet.Strong as Strong
-import Control.Natural
 
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.
 

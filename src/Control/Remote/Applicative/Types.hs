@@ -1,9 +1,9 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE KindSignatures        #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
 {-|
 Module:      Control.Remote.Applicative.Types
 Copyright:   (C) 2016, The University of Kansas
@@ -18,14 +18,8 @@ module Control.Remote.Applicative.Types
   , CP(..)
   ) where
 
-
-import            Control.Natural
-import            Control.Monad.Catch
-import            Control.Applicative
-import            Data.Typeable
-import            Control.Monad.Trans.Class
-import            Control.Remote.Util
-import qualified  Control.Remote.Packet.Applicative as AP
+import           Control.Applicative
+import           Control.Remote.Util
 
 data CP (c :: *) (p :: * -> *) a where
   Cmd   :: c   -> CP c p ()
@@ -52,12 +46,13 @@ instance Alternative (RemoteApplicative p) where
    m1 <|> m2   = Alt m1 m2
 
 instance KnownResult (CP c p) where
-  knownResult (Cmd a)  = Just ()
-  knownResult (Proc p) = Nothing
+  knownResult (Cmd _)  = Just ()
+  knownResult (Proc _) = Nothing
 
 instance (KnownResult cp) => KnownResult (RemoteApplicative cp) where
   knownResult (Primitive p) = knownResult p
   knownResult (Pure a)      = pure a
   knownResult (Ap g h)      = knownResult g <*> knownResult h
   knownResult (Alt g h)     = knownResult g <|> knownResult h
+  knownResult Empty         = Nothing
 

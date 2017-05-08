@@ -1,9 +1,9 @@
 {-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators       #-}
-{-# LANGUAGE KindSignatures      #-}
 
 {-|
 Module:      Control.Remote.Monad.Packet.Weak
@@ -31,29 +31,29 @@ module Control.Remote.Monad
   , runAlternativeMonad
   ) where
 
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.State.Strict
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.State.Strict
 
-import qualified Control.Remote.Applicative as A
-import           Control.Remote.Packet.Applicative as A
+import qualified Control.Remote.Applicative        as A
+import           Control.Remote.Applicative.Types  as AT
+import           Control.Remote.Monad.Types        as T
 import qualified Control.Remote.Packet.Alternative as Alt
-import           Control.Remote.Packet.Weak as Weak
-import           Control.Remote.Packet.Query as Q
-import           Control.Remote.Packet.Strong as Strong
-import           Control.Remote.Monad.Types as T
-import           Control.Remote.Applicative.Types as AT
+import           Control.Remote.Packet.Applicative as A
+import           Control.Remote.Packet.Query       as Q
+--import           Control.Remote.Packet.Strong      as Strong
+import           Control.Remote.Packet.Weak        as Weak
 import           Control.Remote.Util
 
 import           Control.Applicative
-import           Control.Natural
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
+import           Control.Natural
 
 
 primitive :: p a -> RemoteMonad p a
 primitive = T.Appl . AT.Primitive
 
-loop :: forall a c p l . (a-> Bool) -> RemoteMonad p a -> RemoteMonad p a
+loop :: forall a p . (a-> Bool) -> RemoteMonad p a -> RemoteMonad p a
 loop f m = do  res <- m
                if f res then
                  loop f m
