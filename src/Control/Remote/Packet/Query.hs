@@ -12,6 +12,7 @@ Portability: GHC
 module Control.Remote.Packet.Query
   ( -- * The remote applicative
     QueryPacket(..)
+  , module Control.Remote.Packet.Applicative
   ) where
 
 import           Control.Remote.Packet.Applicative
