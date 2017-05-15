@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                remote-monad
-version:             0.4
+version:             0.5
 synopsis:            A parametrizable Remote Monad, and parametrizable Applicative Functor
 description:
             An implementation of the concepts behind Remote Monads. There is support for various bundling strategies for remote primitives. We currently support read-only queries (WithoutAsync), and read-write primitives: commands(asynchronous) and procedures(syncronous).
