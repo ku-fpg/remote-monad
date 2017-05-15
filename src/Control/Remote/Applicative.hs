@@ -138,7 +138,7 @@ runQueryApplicative (NT rf) = wrapNT (go4 . go3)
     go3 :: forall a . RemoteApplicative q a -> Wrapper (Q.QueryPacket q) a
     go3  T.Empty    = empty   --uses Throw'
     go3 (T.Pure a)  = pure a
-    go3 (T.Primitive q) = Value (Q.QueryPacket (A.Primitive q))
+    go3 (T.Primitive q) = Value (Q.Primitive q)
     go3 (T.Ap g h)  = go3 g <*> go3 h
     go3 (T.Alt g h) = go3 g <|> go3 h
 

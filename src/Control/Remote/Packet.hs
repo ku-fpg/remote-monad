@@ -17,6 +17,7 @@ module Control.Remote.Packet
  -- , promoteToStrong
   , promoteToApplicative
   , promoteToAlternative
+  , promoteToQuery
   ) where
 import qualified Control.Remote.Packet.Weak        as Weak
 --import qualified Control.Remote.Packet.Strong as Strong
@@ -58,9 +59,9 @@ promoteToQuery :: forall p m . (Applicative m) => (Weak.WeakPacket p :~> m) -> (
 promoteToQuery (NT f) =  NT queryFunc
                    where
                         queryFunc :: (Applicative m) => (Q.QueryPacket p a -> m a)
-                        queryFunc (Q.QueryPacket (Q.Primitive p)) = f (Weak.Primitive p)
-                        queryFunc (Q.QueryPacket (Q.Zip f1 a b))  = f1 <$> queryFunc (Q.QueryPacket a) <*> queryFunc (Q.QueryPacket b)
-                        queryFunc (Q.QueryPacket (Q.Pure a))      = pure a
+                        queryFunc (Q.Primitive p) = f (Weak.Primitive p)
+                        queryFunc (Q.Zip f1 a b)  = f1 <$> queryFunc a <*> queryFunc b
+                        queryFunc (Q.Pure a)      = pure a
 
 {-
 -- | promotes a function that can work over WeakPackets to a function that can work over Strong Packets

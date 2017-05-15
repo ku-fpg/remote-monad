@@ -186,7 +186,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
     go (AT.Alt g h) = go g <|> go h
 
     -- g is a function that will take the current state as input
-    discharge :: forall a f . Applicative f => (f () ->RemoteApplicative prim a )-> StateT (f ()) m a
+    discharge :: forall a h . Applicative h => (h () ->RemoteApplicative prim a )-> StateT (h ()) m a
     discharge g = do
                  ap' <- get
                  put (pure ()) -- clear state
@@ -217,11 +217,13 @@ runApplicativeMonad f = runApplicativeBase f (wrapNT pk) (wrapNT id)
     pk :: RemoteApplicative prim a -> X ApplicativePacket prim a
     pk (AT.Pure a)      = Pure' a
     pk (AT.Primitive p) = Pkt id $ A.Primitive p
+    pk  AT.Empty        = error "Empty shouldn't exist at packetization stage for ApplicativePacket"
+    pk (AT.Alt _ _)     = error "'<|>' shouldn't exist at packetization stage for ApplicativePacket"
     pk (AT.Ap g h)      = case (pk g, pk h) of
                            (Pure' a, Pure' b)   -> Pure' (a b)
-                           (Pure' a, Pkt f b)   -> Pkt (a . f) b
-                           (Pkt f a, Pure' b)   -> Pkt (`f` b) a
-                           (Pkt f a, Pkt g b)   -> Pkt id $ A.Zip (\ a' b' -> f a' (g b')) a b
+                           (Pure' a, Pkt j b)   -> Pkt (a . j) b
+                           (Pkt j a, Pure' b)   -> Pkt (`j` b) a
+                           (Pkt j a, Pkt k b)   -> Pkt id $ A.Zip (\ a' b' -> j a' (k b')) a b
 
 -- |
 runQueryMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (Q.QueryPacket prim :~> m) -> (RemoteMonad prim :~> m)
@@ -230,12 +232,14 @@ runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
     -- Either A or a Packet to return A
     pk :: RemoteApplicative prim a -> X QueryPacket prim a
     pk (AT.Pure a)  = Pure' a
-    pk (AT.Primitive p) = Pkt id $ QueryPacket $ A.Primitive p
+    pk (AT.Primitive p) = Pkt id $ Q.Primitive p
+    pk (AT.Alt _ _)     = error "'<|>' shouldn't exist at packetization stage for QueryPacket"
+    pk  AT.Empty        = error "Empty shouldn't exist at packetization stage for QueryPacket"
     pk (AT.Ap g h)  = case (pk g, pk h) of
                        (Pure' a, Pure' b)   -> Pure' (a b)
-                       (Pure' a, Pkt f b)   -> Pkt (a . f ) b
-                       (Pkt f a, Pure' b)   -> Pkt (`f` b ) a
-                       (Pkt f (QueryPacket a), Pkt g (QueryPacket b)) -> Pkt id $ QueryPacket $ A.Zip (\ a' b' -> f a' (g b')) a b
+                       (Pure' a, Pkt j b)   -> Pkt (a . j ) b
+                       (Pkt j a, Pure' b)   -> Pkt (`j` b ) a
+                       (Pkt j a, Pkt k b) -> Pkt id $ Q.Zip (\ a' b' -> j a' (k b')) a b
 
     helper:: RemoteMonad prim a -> RemoteMonad prim a
     helper (Ap' x@(Ap' _ _) y@(Ap' _ _))    = helper x <*> helper y

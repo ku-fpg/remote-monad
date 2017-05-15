@@ -1,18 +1,18 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs          #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators  #-}
 
 module Main where
 
-import Control.Natural
-import Control.Remote.Monad
-import Control.Remote.Packet.Weak        as WP
-import Control.Remote.Packet.Applicative as AP
-import Control.Remote.Packet.Query       as Q
-import Control.Remote.Packet.Alternative as Alt
-import Control.Applicative
-import Control.Monad.Catch
-import Control.Exception hiding (catch)
+import           Control.Applicative
+import           Control.Exception                 hiding (catch)
+import           Control.Monad.Catch
+import           Control.Natural
+import           Control.Remote.Monad
+import           Control.Remote.Packet.Alternative as Alt
+import           Control.Remote.Packet.Applicative as AP
+import           Control.Remote.Packet.Query       as Q
+import           Control.Remote.Packet.Weak        as WP
 
 data Query :: * -> * where
    Temperature ::           Query Int
@@ -41,14 +41,20 @@ runAP (AP.Primitive (Say s))     = print s
 runAP (AP.Primitive Temperature) = do
                                   putStrLn "Temp Call"
                                   return 42
-runAP (AP.Zip f g h)         = do
-                             f <$> runAP g <*> runAP h
+runAP (AP.Zip f g h)         = f <$> runAP g <*> runAP h
 runAP (AP.Pure a)            = do
                                    putStrLn "Pure"
                                    return a
 ---------------------------------------------------------
 runQ :: QueryPacket Query a -> IO a
-runQ (QueryPacket pkt) = runAP pkt
+runQ (Q.Primitive (Say s))     = print s
+runQ (Q.Primitive Temperature) = do
+                                    putStrLn "Temp Call"
+                                    return 42
+runQ (Q.Zip f g h)             = f <$> runQ g <*> runQ h
+runQ (Q.Pure a)                = do
+                                    putStrLn "Pure"
+                                    return a
 ---------------------------------------------------------
 runAlt :: AlternativePacket Query a -> IO a
 runAlt (Alt.Primitive (Say s))     = print s
@@ -59,10 +65,10 @@ runAlt (Alt.Zip f g h) = f <$> runAlt g <*> runAlt h
 runAlt (Alt.Pure a)    = return a
 runAlt (Alt g h)       = do
            putStrLn "Alternative"
-           a <-(runAlt g) <|> (runAlt h)
+           a <- runAlt g <|> runAlt h
            putStrLn "End Alternative"
            return a
-runAlt (Alt.Empty) = empty
+runAlt  Alt.Empty = empty
 -----------------------------------------------------------
 sendWeak :: RemoteMonad Query a -> IO a
 sendWeak = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runWP pkt)
@@ -103,13 +109,13 @@ runTest (NT f) = do
                  `catch` (\e -> case e ::RemoteMonadException of
                                        RemoteEmptyException -> putStrLn "Empty Exception Thrown"
                          )
-               (f $ testThrowM)
+               (f testThrowM)
                  `catch` (\e -> case e :: ArithException of
                                   DivideByZero -> putStrLn "Should have sent \"hi\", then given this exception"
                                   _            -> throw e
                          )
 
-               (f $ testThrowM2)
+               (f testThrowM2)
                   `catch` (\e -> case e :: ArithException of
                                   Underflow -> putStrLn "Should have sent temp, then given this exception"
                                   _            -> throw e
@@ -139,7 +145,7 @@ testAlt = do
     say "four" <|> empty
     empty       <|> say "five"
     say "six" >> empty <|> say "seven"
-    r <- (do temperature >>= \a -> if a /= 42 then return a else (say "HA" >> empty)) <|> pure 32
+    r <- (do temperature >>= \a -> if a /= 42 then return a else say "HA" >> empty) <|> pure 32
     say "Should be 32:"
     say (show r)
 
@@ -165,7 +171,7 @@ testThrowM2 = do
 
 --test catch random throwM
 testCatch :: RemoteMonad Query ()
-testCatch = do (say "going to throw" >> throwM DivideByZero)
+testCatch = (say "going to throw" >> throwM DivideByZero)
                    `catch` (\e -> case e :: ArithException of
                                     DivideByZero -> say "Divided by Zero"
                                     _            -> say "Oops!"
@@ -173,7 +179,7 @@ testCatch = do (say "going to throw" >> throwM DivideByZero)
 -- test catching Empty exception
 testCatch2 :: RemoteMonad Query ()
 testCatch2 =do
-     r <- (do temperature >>= \a -> if a /= 42 then return a else (say "HA" >> empty)) <|> pure 32
+     r <- (temperature >>= \a -> if a /= 42 then return a else say "HA" >> empty) <|> pure 32
         `catch` (\e -> case e :: RemoteMonadException of
                           RemoteEmptyException -> do
                                                   say "Caught Exception in Send"
