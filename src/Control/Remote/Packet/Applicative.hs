@@ -18,6 +18,9 @@ module Control.Remote.Packet.Applicative
     ApplicativePacket(..)
   ) where
 
+import           Control.Remote.Util (KnownResult (..))
+import           Data.Maybe          (isJust)
+
 -- | A Remote Applicative, that can encode both commands and procedures, bundled together.
 
 data ApplicativePacket (cp :: * -> *) (a :: *) where
@@ -33,3 +36,8 @@ instance Functor (ApplicativePacket cp) where
 instance Applicative (ApplicativePacket cp) where
   pure a = Pure a
   g <*> h = Zip ($) g h
+
+instance (KnownResult cp) => KnownResult (ApplicativePacket cp) where
+  knownResult (Primitive p) = knownResult p
+  knownResult (Pure a)      = pure a
+  knownResult (Zip ($) g h)   = ($) <$> knownResult g <*> knownResult h
