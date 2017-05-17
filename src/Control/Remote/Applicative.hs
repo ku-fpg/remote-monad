@@ -29,16 +29,18 @@ module Control.Remote.Applicative
 
 import           Control.Monad.Trans.Class
 
-import           Control.Remote.Packet.Alternative as Alt
-import           Control.Remote.Packet.Applicative as A
-import qualified Control.Remote.Packet.Query       as Q
---import qualified Control.Remote.Packet.Strong as Strong
---import           Control.Remote.Packet.Strong (StrongPacket, HStrongPacket(..))
 import           Control.Applicative
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
+--import           Control.Monad.Trans.State
 import           Control.Natural
 import           Control.Remote.Applicative.Types  as T
+import           Control.Remote.Packet.Alternative as Alt
+import           Control.Remote.Packet.Applicative as A
+import qualified Control.Remote.Packet.Query       as Q
+--import           Control.Remote.Packet.Strong      (HStrongPacket (..),
+--                                                    StrongPacket)
+import qualified Control.Remote.Packet.Strong      as Strong
 import           Control.Remote.Packet.Weak        (WeakPacket)
 import qualified Control.Remote.Packet.Weak        as Weak
 import           Control.Remote.Util               as U
@@ -89,7 +91,7 @@ runWeakApplicative (NT rf) = wrapNT go
     go2 (T.Alt g h)        = go2 g <|> go2 h
 {-
 -- | The strong remote applicative, that bundles together commands.
-runStrongApplicative :: forall m prim . (MonadThrow m, Result prim) => (StrongPacket prim :~> m) -> (RemoteApplicative prim :~> m)
+runStrongApplicative :: forall m prim . (MonadThrow m, KnownResult prim) => (StrongPacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go p)) (HStrongPacket id)
     rf $ h $ Strong.Done
@@ -97,15 +99,15 @@ runStrongApplicative (NT rf) = wrapNT $ \ p -> do
       Just a -> return a
       Nothing -> throwM RemoteEmptyException
   where
-    go :: forall a . RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
+    go :: RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
     go (T.Pure a)      = return a
     go (T.Primitive p) =
-      case result p of
-        Command -> lift $ do
-  --                           modify $ \ (HStrongPacket cs) -> HStrongPacket (cs  . Strong.Command  p)
-                             return ()
+      case knownResult p of
+        Just a -> lift $ do
+                             () <-modify $ \ (HStrongPacket cs) -> HStrongPacket (cs  . Strong.Command  p)
+                             return a
 
-        Unknown ->  lift $ do
+        Nothing ->  lift $ do
                               HStrongPacket cs <- get
                               put (HStrongPacket id)
                               r2 <- lift $ rf $ cs $ Strong.Procedure p
@@ -148,7 +150,6 @@ runQueryApplicative (NT rf) = wrapNT (go4 . go3)
                           throwM RemoteEmptyException
 
 
-
 runAlternativeApplicative :: forall m prim . (MonadThrow m) => (AlternativePacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
    where
@@ -158,5 +159,3 @@ runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
       go (T.Primitive p)         = Alt.Primitive p
       go (T.Ap g h)              = go g <*> go h
       go (T.Alt g h)             = go g <|> go h
-
-

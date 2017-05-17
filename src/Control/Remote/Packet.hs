@@ -14,18 +14,18 @@ Portability: GHC
 module Control.Remote.Packet
   (
     Promote(..)
- -- , promoteToStrong
+  , promoteToStrong
   , promoteToApplicative
   , promoteToAlternative
   , promoteToQuery
   ) where
-import qualified Control.Remote.Packet.Weak        as Weak
---import qualified Control.Remote.Packet.Strong as Strong
 import           Control.Applicative
 import           Control.Natural
 import qualified Control.Remote.Packet.Alternative as Alt
 import qualified Control.Remote.Packet.Applicative as A
 import qualified Control.Remote.Packet.Query       as Q
+import qualified Control.Remote.Packet.Strong      as Strong
+import qualified Control.Remote.Packet.Weak        as Weak
 
 class Promote f where
     promote :: (Applicative m) => (Weak.WeakPacket p :~> m) -> (f p :~> m)
@@ -63,13 +63,13 @@ promoteToQuery (NT f) =  NT queryFunc
                         queryFunc (Q.Zip f1 a b)  = f1 <$> queryFunc a <*> queryFunc b
                         queryFunc (Q.Pure a)      = pure a
 
-{-
+
 -- | promotes a function that can work over WeakPackets to a function that can work over Strong Packets
 promoteToStrong :: forall p m . (Applicative m) => (Weak.WeakPacket p :~> m) -> (Strong.StrongPacket p :~> m)
 promoteToStrong (NT f) = NT $ strongFunc
                        where
                            strongFunc :: (Applicative m) => (Strong.StrongPacket p a -> m a)
-                           strongFunc (Strong.Command c cmds) = f (Weak.Command c) *> strongFunc cmds
-                           strongFunc (Strong.Procedure p)    = f (Weak.Procedure p)
+                           strongFunc (Strong.Command c cmds) = f (Weak.Primitive c) *> strongFunc cmds
+                           strongFunc (Strong.Procedure p)    = f (Weak.Primitive p)
                            strongFunc (Strong.Done)           = pure ()
--}
+
