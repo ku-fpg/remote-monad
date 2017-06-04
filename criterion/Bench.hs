@@ -1,6 +1,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE GADTs          #-}
 {-# LANGUAGE BangPatterns   #-}
+{-# OPTIONS_GHC -O0         #-}
 
 import Criterion.Main
 import Data.List (foldl')
