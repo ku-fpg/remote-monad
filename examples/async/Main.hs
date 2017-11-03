@@ -1,18 +1,18 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs          #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators  #-}
 
 module Main where
-
-import Control.Natural
-import Control.Remote.Monad as T
-import qualified Control.Remote.Packet.Weak as WP
+import           Control.Monad                     (replicateM)
+import           Control.Natural
+import           Control.Remote.Monad              as T
+import qualified Control.Remote.Packet.Weak        as WP
 --import qualified Control.Remote.Packet.Strong as SP
-import qualified Control.Remote.Packet.Applicative as AP
+import           Control.Applicative
+import           Control.Exception                 hiding (catch)
+import           Control.Monad.Catch
 import qualified Control.Remote.Packet.Alternative as Alt
-import Control.Applicative
-import Control.Monad.Catch
-import Control.Exception hiding (catch)
+import qualified Control.Remote.Packet.Applicative as AP
 
 
 data MyProc :: * -> * where
@@ -125,6 +125,8 @@ runTest (NT f) = do
 
                f testCatch
                f testCatch2
+               f testMapSay
+               f testMapTemp
 
 -- Original test case
 test :: RemoteMonad MyProc ()
@@ -197,3 +199,11 @@ testApp = do
             add :: Int -> Int -> Int -> Int
             add x y z= x + y + z
 
+testMapSay :: RemoteMonad MyProc ()
+testMapSay = do
+  sequence_ $ map say ["These","could","all", "be", "together"]
+
+testMapTemp :: RemoteMonad MyProc ()
+testMapTemp = do
+  ts <- replicateM 4 temperature
+  sequence_ $ map (say . show) ts
