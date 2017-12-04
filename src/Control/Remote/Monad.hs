@@ -22,6 +22,7 @@ module Control.Remote.Monad
     -- * The primitive lift functions
   , primitive
   , loop
+  , io
     -- * The run functions
   , RunMonad(runMonad)
   , runWeakMonad
@@ -31,6 +32,7 @@ module Control.Remote.Monad
   , runAlternativeMonad
   ) where
 
+import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class
 import           Control.Monad.Trans.State.Strict
 
@@ -60,6 +62,9 @@ loop f m = do  res <- m
                 else
                   return res
 
+io :: IO a -> RemoteMonad p a
+io action = IOAction action
+
 data X (f :: ( * -> *) -> * -> *) p a where
   Pure' :: a -> X f p a
   Pkt  :: (a -> b) -> f p a -> X f p b
@@ -69,7 +74,7 @@ data X (f :: ( * -> *) -> * -> *) p a where
 class RunMonad f where
   -- | This overloaded function chooses the appropriate bundling strategy
   --   based on the type of the handler your provide.
-  runMonad :: (MonadCatch m, KnownResult prim) => (f prim :~> m) -> (RemoteMonad prim :~> m)
+  runMonad :: (MonadIO m, MonadCatch m, KnownResult prim) => (f prim :~> m) -> (RemoteMonad prim :~> m)
 
 instance RunMonad WeakPacket where
   runMonad = runWeakMonad
@@ -92,7 +97,7 @@ instance RunMonad Q.QueryPacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (MonadCatch m, KnownResult prim) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
+runMonadSkeleton :: (MonadIO m, MonadCatch m, KnownResult prim) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
 runMonadSkeleton f = wrapNT $ \ case
   Appl g   -> unwrapNT f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # k a
@@ -104,10 +109,11 @@ runMonadSkeleton f = wrapNT $ \ case
   Empty'    -> throwM RemoteEmptyException
   Throw e   -> throwM e
   Catch m h -> catch (runMonadSkeleton f # m)  ((runMonadSkeleton f #) . h)
+  IOAction a -> liftIO a
 
 -- | This is the classic weak remote monad, or technically the
 --   weak remote applicative weak remote monad.
-runWeakMonad :: (MonadCatch m, KnownResult prim) => (WeakPacket prim :~> m) -> (RemoteMonad prim :~> m)
+runWeakMonad :: (MonadIO m, MonadCatch m, KnownResult prim) => (WeakPacket prim :~> m) -> (RemoteMonad prim :~> m)
 runWeakMonad = runMonadSkeleton . A.runWeakApplicative
 
 {-
@@ -154,7 +160,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
 -}
 type PreProcessor q = RemoteMonad q :~> RemoteMonad q
 
-runApplicativeBase :: forall f m prim . (MonadCatch m, KnownResult prim) => (f prim :~> m)
+runApplicativeBase :: forall f m prim . (MonadIO m, MonadCatch m, KnownResult prim) => (f prim :~> m)
                -> (RemoteApplicative prim :~> X f prim)
                -> PreProcessor prim -> (RemoteMonad prim :~> m)
 runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
@@ -177,6 +183,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
         ()<-discharge id
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
+    go2 (IOAction a) = liftIO a
 
     go :: forall a . RemoteApplicative prim a -> Wrapper (RemoteApplicative prim) a
     go  AT.Empty    = empty
@@ -210,7 +217,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
 -- | The is the strong applicative remote monad. It bundles
 --   packets (of type 'RemoteApplicative') as large as possible,
 --   including over some monadic binds.
-runApplicativeMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (A.ApplicativePacket prim :~> m) -> (RemoteMonad prim :~> m)
+runApplicativeMonad :: forall m prim . (MonadIO m, MonadCatch m, KnownResult prim) => (A.ApplicativePacket prim :~> m) -> (RemoteMonad prim :~> m)
 runApplicativeMonad f = runApplicativeBase f (wrapNT pk) (wrapNT id)
   where
     -- Either A or a Packet to return A
@@ -226,7 +233,7 @@ runApplicativeMonad f = runApplicativeBase f (wrapNT pk) (wrapNT id)
                            (Pkt j a, Pkt k b)   -> Pkt id $ A.Zip (\ a' b' -> j a' (k b')) a b
 
 -- |
-runQueryMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (Q.QueryPacket prim :~> m) -> (RemoteMonad prim :~> m)
+runQueryMonad :: forall m prim . (MonadIO m, MonadCatch m, KnownResult prim) => (Q.QueryPacket prim :~> m) -> (RemoteMonad prim :~> m)
 runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
   where
     -- Either A or a Packet to return A
@@ -253,7 +260,7 @@ runQueryMonad f = runApplicativeBase f (wrapNT pk) (wrapNT helper)
     helper (Bind m k) =  helper m >>= \ x -> helper (k x)
     helper x = x
 
-runAlternativeMonad :: forall m prim . (MonadCatch m, KnownResult prim) => (Alt.AlternativePacket prim :~> m) -> (RemoteMonad prim :~> m)
+runAlternativeMonad :: forall m prim . (MonadIO m, MonadCatch m, KnownResult prim) => (Alt.AlternativePacket prim :~> m) -> (RemoteMonad prim :~> m)
 runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
    (r,h) <-  runStateT (runMaybeT (go2 p)) (pure ())
    () <- rf $ pk h
@@ -272,6 +279,7 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
         ()<- discharge id
         throwM e
     go2 (Catch m h) = catch (go2 m) (go2 . h)
+    go2 (IOAction a) = liftIO a
 
     go :: forall a .  RemoteApplicative prim a -> StateT (RemoteApplicative prim ()) m a
     go ap = case knownResult ap of

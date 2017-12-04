@@ -17,9 +17,9 @@ module Control.Remote.Monad.Types
   ( RemoteMonad(..)
   ) where
 
-
 import           Control.Applicative
 import           Control.Monad.Catch
+import           Control.Monad.IO.Class
 import           Control.Remote.Applicative.Types
 
 -- | 'RemoteMonad' is our monad that can be executed in a remote location.
@@ -31,6 +31,7 @@ data RemoteMonad  p a where
    Empty'      :: RemoteMonad p a
    Throw       :: Exception e => e -> RemoteMonad p a
    Catch       :: Exception e => RemoteMonad p a -> (e -> RemoteMonad p a)-> RemoteMonad p a
+   IOAction    :: IO a -> RemoteMonad p a
 
 instance  Functor (RemoteMonad p) where
   fmap f m = pure f <*> m
@@ -51,6 +52,9 @@ instance MonadThrow (RemoteMonad p) where
 
 instance MonadCatch (RemoteMonad p) where
     catch m f = Catch m f
+
+instance MonadIO (RemoteMonad p) where
+   liftIO = IOAction
 
 instance Alternative (RemoteMonad p) where
     empty        = Empty'
