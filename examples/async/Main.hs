@@ -3,26 +3,31 @@
 {-# LANGUAGE TypeOperators  #-}
 
 module Main where
+import           Control.Applicative
+import           Control.Exception                 hiding (catch)
 import           Control.Monad                     (replicateM)
+import           Control.Monad.Catch
 import           Control.Natural
+import           System.Random
+
+
 import           Control.Remote.Monad              as T
 import qualified Control.Remote.Packet.Weak        as WP
 --import qualified Control.Remote.Packet.Strong as SP
-import           Control.Applicative
-import           Control.Exception                 hiding (catch)
-import           Control.Monad.Catch
 import qualified Control.Remote.Packet.Alternative as Alt
 import qualified Control.Remote.Packet.Applicative as AP
 
 
 data MyProc :: * -> * where
-  Say         :: String -> MyProc ()
-  Temperature :: MyProc Int
+  Say              :: String -> MyProc ()
+  Temperature      :: MyProc Int
+  CommentOnWeather :: MyProc ()
 
 
 instance KnownResult MyProc where
-  knownResult (Say _s)       = pure ()
-  knownResult (Temperature) = Nothing
+  knownResult (Say _s)           = pure ()
+  knownResult (Temperature)      = Nothing
+  knownResult (CommentOnWeather) = pure ()
 
 say :: String -> RemoteMonad MyProc ()
 say s = primitive (Say s)
@@ -30,14 +35,32 @@ say s = primitive (Say s)
 temperature :: RemoteMonad MyProc Int
 temperature = primitive Temperature
 
+commentOnWeather :: RemoteMonad MyProc ()
+commentOnWeather = primitive CommentOnWeather
 
 --Server Side Functions
 ---------------------------------------------------------
+eval :: MyProc a -> IO a
+eval (Say s) = print s
+eval Temperature = do
+                       putStrLn "Temp Call"
+                       getStdRandom $ randomR ((-20),120)
+eval CommentOnWeather = do
+                         t <- eval Temperature
+                         if t < 32 then
+                           eval (Say "It's getting kind of chilly!")
+                         else if t < 70 then
+                           eval (Say "It's getting kind of chilly!")
+                         else if t < 80 then
+                           eval (Say "What a beautiful day we are having!")
+                         else if t < 100 then
+                           eval (Say "It's time to hit the pool!")
+                         else
+                           eval (Say "It's too hot to go outside!")
+---------------------------------------------------------
 runWP ::  WP.WeakPacket MyProc a -> IO a
-runWP (WP.Primitive (Say s))       = print s
-runWP (WP.Primitive Temperature) = do
-                                 putStrLn "Temp Call"
-                                 return 42
+runWP (WP.Primitive x )       = eval x
+
 ---------------------------------------------------------
 --runSP :: StrongPacket MyProc a -> IO a
 --runSP (SP.Primitive (Say s) cs) =do
@@ -49,20 +72,14 @@ runWP (WP.Primitive Temperature) = do
 --runSP Done = return ()
 -----------------------------------------------------------
 runAP :: AP.ApplicativePacket MyProc a -> IO a
-runAP (AP.Primitive (Say s)) = print s
-runAP (AP.Primitive Temperature) =do
-                                    putStrLn "Temp Call"
-                                    return 42
+runAP (AP.Primitive x ) = eval x
 runAP (AP.Zip f g h) = f <$> runAP g <*> runAP h
 runAP (AP.Pure a) = do
                        putStrLn "Pure"
                        return a
 ---------------------------------------------------------
 runAlt :: Alt.AlternativePacket MyProc a -> IO a
-runAlt (Alt.Primitive (Say s)) = print s
-runAlt (Alt.Primitive Temperature) = do
-                                  putStrLn "Temp Call"
-                                  return 42
+runAlt (Alt.Primitive x) = eval x
 runAlt (Alt.Zip f g h) = f <$> runAlt g <*> runAlt h
 runAlt (Alt.Pure a)    = return a
 runAlt (Alt.Alt g h)       = do
@@ -133,12 +150,21 @@ test :: RemoteMonad MyProc ()
 test = do
          say "Howdy doodly do"
          say "How about a muffin?"
+         io $ putStrLn "This is a local IO call!"
          t <- temperature
          say (show t ++ "F")
 
 -- Test bind
 testBind :: RemoteMonad MyProc ()
 testBind = say "one" >> say "two" >> temperature >>= say . ("Temperature: " ++) .show
+
+testApp :: RemoteMonad MyProc ()
+testApp = do
+          r <- add <$> temperature <*> temperature <*> temperature
+          say ("We added 3 temperatures: " ++ show r)
+     where
+            add :: Int -> Int -> Int -> Int
+            add x y z= x + y + z
 
 -- test alt
 testAlt :: RemoteMonad MyProc ()
@@ -149,7 +175,7 @@ testAlt = do
     say "four" <|> empty
     empty       <|> say "five"
     say "six" >> empty <|> say "seven"
-    r <- (temperature >>= \a -> if a /= 42 then return a else say "HA" >> empty) <|> pure 32
+    r <- (temperature >>= \a -> if a > 120 then return a else say "HA" >> empty) <|> pure 32
     say "Should be 32:"
     say (show r)
 
@@ -183,21 +209,13 @@ testCatch = (say "going to throw" >> throwM DivideByZero)
 -- test catching Empty exception
 testCatch2 :: RemoteMonad MyProc ()
 testCatch2 =do
-     r <- (temperature >>= \a -> if a /= 42 then return a else say "HA" >> empty) <|> pure 32
+     r <- (temperature >>= \a -> if a > 120 then return a else say "HA" >> empty) <|> pure 32
         `catch` (\e -> case e :: RemoteMonadException of
                           RemoteEmptyException -> do
                                                   say "Caught Exception in Send"
                                                   temperature
                 )
      say (show r)
-
-testApp :: RemoteMonad MyProc ()
-testApp = do
-          r<- add <$> temperature<*>temperature <*> temperature
-          say (show r)
-     where
-            add :: Int -> Int -> Int -> Int
-            add x y z= x + y + z
 
 testMapSay :: RemoteMonad MyProc ()
 testMapSay = do
