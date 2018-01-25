@@ -88,6 +88,7 @@ test-suite remote-monad-async-example
   build-depends:       base                   >= 4.7 && < 5
                      , exceptions             >= 0.8 && < 0.9
                      , natural-transformation >= 0.4 && < 0.5
+                     , random
                      , remote-monad
   hs-source-dirs:      examples/async
   default-language:    Haskell2010
@@ -142,6 +143,20 @@ test-suite remote-monad-example-state
                      , text
                      , transformers
                      , wai-extra
+  default-language:    Haskell2010
+
+test-suite remote-monad-monad-transformer-example
+  type:                exitcode-stdio-1.0
+  main-is:             Main2.hs
+  ghc-options:         -Wall
+  hs-source-dirs:      examples/monad-transformer/app
+  build-depends:       base
+                     , bytestring
+                     , containers
+                     , hedis
+                     , mtl
+                     , natural-transformation >= 0.4 && < 0.5
+                     , remote-monad
   default-language:    Haskell2010
 
 --executable remote-monad-example-fb

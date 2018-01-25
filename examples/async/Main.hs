@@ -21,13 +21,13 @@ import qualified Control.Remote.Packet.Applicative as AP
 data MyProc :: * -> * where
   Say              :: String -> MyProc ()
   Temperature      :: MyProc Int
-  CommentOnWeather :: MyProc ()
+  CommentOnWeather :: MyProc Int
 
 
 instance KnownResult MyProc where
   knownResult (Say _s)           = pure ()
   knownResult (Temperature)      = Nothing
-  knownResult (CommentOnWeather) = pure ()
+  knownResult (CommentOnWeather) = Nothing
 
 say :: String -> RemoteMonad MyProc ()
 say s = primitive (Say s)
@@ -35,7 +35,7 @@ say s = primitive (Say s)
 temperature :: RemoteMonad MyProc Int
 temperature = primitive Temperature
 
-commentOnWeather :: RemoteMonad MyProc ()
+commentOnWeather :: RemoteMonad MyProc Int
 commentOnWeather = primitive CommentOnWeather
 
 --Server Side Functions
@@ -46,17 +46,22 @@ eval Temperature = do
                        putStrLn "Temp Call"
                        getStdRandom $ randomR ((-20),120)
 eval CommentOnWeather = do
-                         t <- eval Temperature
-                         if t < 32 then
-                           eval (Say "It's getting kind of chilly!")
-                         else if t < 70 then
-                           eval (Say "It's getting kind of chilly!")
-                         else if t < 80 then
-                           eval (Say "What a beautiful day we are having!")
-                         else if t < 100 then
-                           eval (Say "It's time to hit the pool!")
-                         else
-                           eval (Say "It's too hot to go outside!")
+                           do t <- eval Temperature
+                              eval $ Say $ getPhrase t
+                              return t
+  where
+    getPhrase :: Int -> String
+    getPhrase t = if t < 32 then
+                     "It's freezing out here!"
+                   else if t < 70 then
+                     "It's getting kind of chilly!"
+                   else if t < 80 then
+                     "What a beautiful day we are having!"
+                   else if t < 100 then
+                     "It's time to hit the pool!"
+                   else
+                     "It's too hot to go outside!"
+
 ---------------------------------------------------------
 runWP ::  WP.WeakPacket MyProc a -> IO a
 runWP (WP.Primitive x )       = eval x
@@ -152,7 +157,9 @@ test = do
          say "How about a muffin?"
          io $ putStrLn "This is a local IO call!"
          t <- temperature
-         say (show t ++ "F")
+         say (show t ++ " F")
+         t2 <- commentOnWeather
+         say (show t2 ++ " F")
 
 -- Test bind
 testBind :: RemoteMonad MyProc ()
