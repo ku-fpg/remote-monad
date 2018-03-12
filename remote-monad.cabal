@@ -52,6 +52,7 @@ category:            Control
 build-type:          Simple
 tested-with:         GHC == 7.10.3
 cabal-version:       >=1.10
+extra-source-files:  CHANGELOG.md, README.md
 
 source-repository head
   type:                git
