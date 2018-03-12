@@ -51,6 +51,9 @@ copyright:           (c) 2016 The University of Kansas
 category:            Control
 build-type:          Simple
 tested-with:         GHC == 7.10.3
+                   , GHC == 8.0.2
+                   , GHC == 8.2.2
+                   , GHC == 8.4.1
 cabal-version:       >=1.10
 extra-source-files:  CHANGELOG.md, README.md
 
