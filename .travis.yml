@@ -86,6 +86,9 @@ install:
     fi
   - grep -Ev -- '^\s*--' ${HOME}/.cabal/config | grep -Ev '^\s*$'
   - "printf 'packages: \".\"\\n' > cabal.project"
+  # Temporary hack
+  - echo 'package remote-monad' >> cabal.project
+  - "echo '  allow-newer: transformers-compat' >> cabal.project"
   - cat cabal.project
   - if [ -f "./configure.ac" ]; then
       (cd "." && autoreconf -i);
@@ -104,6 +107,9 @@ script:
   - cd ${DISTDIR} || false
   - find . -maxdepth 1 -name '*.tar.gz' -exec tar -xvf '{}' \;
   - "printf 'packages: remote-monad-*/*.cabal\\n' > cabal.project"
+  # Temporary hack
+  - echo 'package remote-monad' >> cabal.project
+  - "echo '  allow-newer: transformers-compat' >> cabal.project"
   - cat cabal.project
 
 
