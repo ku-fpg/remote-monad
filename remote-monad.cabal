@@ -74,9 +74,9 @@ library
   other-modules:
   other-extensions:    GADTs, RankNTypes, ScopedTypeVariables
   build-depends:       base >=4.7 && < 5
-                     , exceptions             >= 0.8 && < 0.9
+                     , exceptions             >= 0.8 && < 0.11
                      , natural-transformation >= 0.4 && < 0.5
-                     , transformers >= 0.4 && < 0.6
+                     , transformers           >= 0.4 && < 0.6
                      , mtl                    >= 2.2 && < 2.3
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -86,7 +86,7 @@ test-suite remote-monad-async-example
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   build-depends:       base                   >= 4.7 && < 5
-                     , exceptions             >= 0.8 && < 0.9
+                     , exceptions             >= 0.8 && < 0.11
                      , natural-transformation >= 0.4 && < 0.5
                      , remote-monad
   hs-source-dirs:      examples/async
@@ -97,7 +97,7 @@ test-suite remote-monad-query-example
   type:                exitcode-stdio-1.0
   main-is:             Main.hs
   build-depends:       base                   >= 4.7 && < 5
-                     , exceptions             >= 0.8 && < 0.9
+                     , exceptions             >= 0.8 && < 0.11
                      , natural-transformation >= 0.4 && < 0.5
                      , remote-monad
   hs-source-dirs:      examples/query
@@ -111,10 +111,10 @@ test-suite remote-monad-properties
                      , containers             >= 0.1 && < 0.6
                      , natural-transformation >= 0.4 && < 0.5
                      , remote-monad
-                     , QuickCheck             >= 2.8 && < 2.10
+                     , QuickCheck             >= 2.8 && < 2.12
                      , quickcheck-instances   >= 0.1 && < 0.4
-                     , tasty                  >= 0.8 && < 0.12
-                     , tasty-quickcheck       >= 0.8 && < 0.9
+                     , tasty                  >= 0.8 && < 1.1
+                     , tasty-quickcheck       >= 0.8 && < 0.11
   hs-source-dirs:      tests
   default-language:    Haskell2010
   ghc-options:         -Wall
