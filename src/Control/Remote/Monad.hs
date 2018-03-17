@@ -92,7 +92,7 @@ instance RunMonad Q.QueryPacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (MonadCatch m, KnownResult prim) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
+runMonadSkeleton :: (MonadCatch m) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
 runMonadSkeleton f = wrapNT $ \ case
   Appl g   -> unwrapNT f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # k a
