@@ -140,7 +140,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
     go (AT.Primitive p) =
       case knownResult p of
         Just a -> lift $ do
-          modify $ (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command p ))
+          modify $ (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command p))
           return a
         Nothing ->  lift $ do
           HStrongPacket cs <- get
