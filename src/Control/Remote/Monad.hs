@@ -138,11 +138,11 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
     go :: forall a . (KnownResult prim) =>  RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
     go (AT.Pure a)      = return a
     go (AT.Primitive p) =
-      case knownResult p of
-        Just a -> lift $ do
+      case unitResult p of
+        UnitResult -> lift $ do
           modify $ (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command p))
-          return a
-        Nothing ->  lift $ do
+          return ()
+        UnknownResult ->  lift $ do
           HStrongPacket cs <- get
           put (HStrongPacket id)
           r2 <- lift $ rf $ cs $ Strong.Procedure p
