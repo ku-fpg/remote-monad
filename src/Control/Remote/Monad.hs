@@ -19,6 +19,7 @@ module Control.Remote.Monad
     RemoteMonad
   , RemoteMonadException(..)
   , KnownResult(..)
+  , Result(..)
     -- * The primitive lift functions
   , primitive
   , loop
