@@ -1,26 +1,27 @@
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE GADTs          #-}
 {-# LANGUAGE BangPatterns   #-}
+{-# LANGUAGE GADTs          #-}
+{-# LANGUAGE KindSignatures #-}
 {-# OPTIONS_GHC -O0         #-}
 
-import Criterion.Main
-import Data.List (foldl')
+import           Criterion.Main
+import           Data.List                         (foldl')
 
-import           Control.Natural (wrapNT,unwrapNT,(:~>),(#))
+import           Control.Natural                   ((:~>), unwrapNT, wrapNT,
+                                                    ( # ))
 
-import qualified Control.Remote.Monad as M
+import qualified Control.Remote.Applicative        as A
+import qualified Control.Remote.Monad              as M
 import           Control.Remote.Packet.Applicative as AP
-import qualified Control.Remote.Packet.Weak as WP
-import qualified Control.Remote.Packet.Strong as SP
-import qualified Control.Remote.Applicative as A
+import qualified Control.Remote.Packet.Strong      as SP
+import qualified Control.Remote.Packet.Weak        as WP
 
-import System.Environment
-import Data.IORef
-import Data.Maybe (fromJust)
+import           Data.IORef
+import           Data.Maybe                        (fromJust)
+import           System.Environment
 
-import Control.Monad
+import           Control.Monad
 
-import Debug.Trace
+import           Debug.Trace
 
 
 fib :: Int -> Int
@@ -37,7 +38,7 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    [] -> withArgs defArgs main2
+    []    -> withArgs defArgs main2
     other -> main2
 
 main2 :: IO ()
@@ -89,7 +90,7 @@ main2 = do
         ]
     | (packetType,sender) <-
            [("weak",   M.runMonad (wrapNT $ runWP   stack))
---           ,("strong", M.runMonad (wrapNT $ runSP   stack))
+           ,("strong", M.runMonad (wrapNT $ runSP   stack))
            ,("app",    M.runMonad (wrapNT $ runAppP stack))
            ]
     ]
@@ -178,10 +179,10 @@ runWP ref (WP.Primitive (Pop)) = do
           writeIORef ref xs
           return (Just x)
 
--- runSP :: IORef [Integer] -> SP.StrongPacket P a -> IO a
--- runSP ref (SP.Primitive   c pk) = runWP ref (WP.Primitive c) >> runSP ref pk
--- runSP ref (SP.Primitive p)    = runWP ref (WP.Primitive p)
--- runSP ref SP.Done             = pure ()
+runSP :: IORef [Integer] -> SP.StrongPacket P a -> IO a
+runSP ref (SP.Command   c pk) = runWP ref (WP.Primitive c) >> runSP ref pk
+runSP ref (SP.Procedure p)    = runWP ref (WP.Primitive p)
+runSP ref SP.Done             = pure ()
 
 runAppP :: IORef [Integer] -> ApplicativePacket P a -> IO a
 runAppP ref (AP.Primitive p) = runWP ref (WP.Primitive p)
