@@ -19,6 +19,7 @@ module Control.Remote.Monad
     RemoteMonad
   , RemoteMonadException(..)
   , KnownResult(..)
+  , Result(..)
     -- * The primitive lift functions
   , primitive
   , loop
@@ -40,7 +41,7 @@ import           Control.Remote.Monad.Types        as T
 import qualified Control.Remote.Packet.Alternative as Alt
 import           Control.Remote.Packet.Applicative as A
 import           Control.Remote.Packet.Query       as Q
---import           Control.Remote.Packet.Strong      as Strong
+import           Control.Remote.Packet.Strong      as Strong
 import           Control.Remote.Packet.Weak        as Weak
 import           Control.Remote.Util
 
@@ -74,8 +75,8 @@ class RunMonad f where
 instance RunMonad WeakPacket where
   runMonad = runWeakMonad
 
---instance RunMonad StrongPacket where
---  runMonad = runStrongMonad
+instance RunMonad StrongPacket where
+  runMonad = runStrongMonad
 
 instance RunMonad ApplicativePacket where
   runMonad = runApplicativeMonad
@@ -92,7 +93,7 @@ instance RunMonad Q.QueryPacket where
 --   Every '>>=' will generate a call to the 'RemoteApplicative'
 --   handler; as well as one terminating call.
 --   Using 'runBindeeMonad' with a 'runWeakApplicative' gives the weakest remote monad.
-runMonadSkeleton :: (MonadCatch m, KnownResult prim) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
+runMonadSkeleton :: (MonadCatch m) => (RemoteApplicative prim :~> m) -> (RemoteMonad prim :~> m)
 runMonadSkeleton f = wrapNT $ \ case
   Appl g   -> unwrapNT f g
   Bind g k -> (runMonadSkeleton f # g) >>= \ a -> runMonadSkeleton f # k a
@@ -110,7 +111,7 @@ runMonadSkeleton f = wrapNT $ \ case
 runWeakMonad :: (MonadCatch m, KnownResult prim) => (WeakPacket prim :~> m) -> (RemoteMonad prim :~> m)
 runWeakMonad = runMonadSkeleton . A.runWeakApplicative
 
-{-
+
 -- | This is the classic strong remote monad. It bundles
 --   packets (of type 'StrongPacket') as large as possible,
 --   including over some monadic binds.
@@ -123,6 +124,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
        Just v  -> return v
   where
     go2 :: forall a . RemoteMonad prim a -> MaybeT (StateT (HStrongPacket prim) m) a
+    go2 (Appl app) = go app
     go2 (Bind app k) = go2 app >>= \ a -> go2 (k a)
     go2 (Ap' g h)    = go2 g <*> go2 h
     go2 (Alt' m1 m2) = go2 m1  <|> go2 m2
@@ -137,11 +139,11 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
     go :: forall a . (KnownResult prim) =>  RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
     go (AT.Pure a)      = return a
     go (AT.Primitive p) =
-      case knownResult p of
-        Just a -> lift $ do
-          modify $ (\ (HStrongPacket cs) -> HStrongPacket (cs (Strong.Primitive p) ))
-          return a
-        Nothing ->  lift $ do
+      case unitResult p of
+        UnitResult -> lift $ do
+          modify $ (\ (HStrongPacket cs) -> HStrongPacket (cs . Strong.Command p))
+          return ()
+        UnknownResult ->  lift $ do
           HStrongPacket cs <- get
           put (HStrongPacket id)
           r2 <- lift $ rf $ cs $ Strong.Procedure p
@@ -151,7 +153,7 @@ runStrongMonad (NT rf) = wrapNT $ \ p -> do
     go (AT.Ap g h) = go g <*> go h
     go (AT.Alt g h) = go g <|> go h
 
--}
+
 type PreProcessor q = RemoteMonad q :~> RemoteMonad q
 
 runApplicativeBase :: forall f m prim . (MonadCatch m, KnownResult prim) => (f prim :~> m)
@@ -165,7 +167,7 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
                      return $ f res
     case r of
       Nothing -> throwM RemoteEmptyException
-      Just v -> return v
+      Just v  -> return v
   where
     go2 :: forall a . RemoteMonad prim a -> MaybeT (StateT (RemoteApplicative prim ()) m) a
     go2 (Appl app)   = lift $ unwrap $ go app
@@ -179,11 +181,11 @@ runApplicativeBase (NT rf) (NT pk) (NT reWrite) = wrapNT $ \ q -> do
     go2 (Catch m h) = catch (go2 m) (go2 . h)
 
     go :: forall a . RemoteApplicative prim a -> Wrapper (RemoteApplicative prim) a
-    go  AT.Empty    = empty
-    go (AT.Pure a)  = pure a
+    go  AT.Empty        = empty
+    go (AT.Pure a)      = pure a
     go (AT.Primitive q) = Value $ AT.Primitive q
-    go (AT.Ap g h)  = go g <*> go h
-    go (AT.Alt g h) = go g <|> go h
+    go (AT.Ap g h)      = go g <*> go h
+    go (AT.Alt g h)     = go g <|> go h
 
     -- g is a function that will take the current state as input
     discharge :: forall a h . Applicative h => (h () ->RemoteApplicative prim a )-> StateT (h ()) m a
@@ -259,7 +261,7 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
    () <- rf $ pk h
    case r of
       Nothing -> throwM RemoteEmptyException
-      Just v -> return v
+      Just v  -> return v
 
    where
     go2 :: forall a . RemoteMonad prim a -> MaybeT (StateT (RemoteApplicative prim ()) m) a
@@ -281,11 +283,11 @@ runAlternativeMonad (NT rf) = wrapNT $ \ p -> do
                           return a
 
     pk :: forall a . RemoteApplicative prim a -> Alt.AlternativePacket prim a
-    pk AT.Empty                       = empty
-    pk (AT.Pure a)                    = pure a
-    pk (AT.Primitive p)               = Alt.Primitive p
-    pk (AT.Ap g h)                    = pk g <*> pk h
-    pk (AT.Alt g h)                   = pk g <|> pk h
+    pk AT.Empty         = empty
+    pk (AT.Pure a)      = pure a
+    pk (AT.Primitive p) = Alt.Primitive p
+    pk (AT.Ap g h)      = pk g <*> pk h
+    pk (AT.Alt g h)     = pk g <|> pk h
 
     -- g is a function that will take the current state as input
     discharge :: forall a f . Applicative f => (f () ->RemoteApplicative prim a )-> StateT (f ()) m a

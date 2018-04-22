@@ -17,7 +17,7 @@ module Control.Remote.Util
   ( Wrapper(..)
   , RemoteMonadException(..)
   , KnownResult(..)
-  , value
+  , Result(..)
   ) where
 
 
@@ -54,7 +54,13 @@ data RemoteMonadException = RemoteEmptyException
 instance Exception RemoteMonadException
 
 -- | Can we dynamically extract the 'result' of a functor, without evaluation.
-
 class KnownResult f where
   knownResult :: f a -> Maybe a
   knownResult _ = Nothing
+
+  unitResult :: f a -> Result a
+  unitResult _ = UnknownResult
+
+data Result a where
+  UnitResult    :: Result ()
+  UnknownResult :: Result a

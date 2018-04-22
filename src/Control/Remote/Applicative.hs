@@ -16,12 +16,13 @@ module Control.Remote.Applicative
   ( -- * The remote applicative
     RemoteApplicative
   , KnownResult(..)
+  , Result(..)
     -- * The primitive lift functions
   , primitive
     -- * The run functions
   , RunApplicative(runApplicative)
   , runWeakApplicative
---  , runStrongApplicative
+  , runStrongApplicative
   , runApplicativeApplicative
   , runAlternativeApplicative
   ) where
@@ -32,14 +33,14 @@ import           Control.Monad.Trans.Class
 import           Control.Applicative
 import           Control.Monad.Catch
 import           Control.Monad.Trans.Maybe
---import           Control.Monad.Trans.State
+import           Control.Monad.Trans.State
 import           Control.Natural
 import           Control.Remote.Applicative.Types  as T
 import           Control.Remote.Packet.Alternative as Alt
 import           Control.Remote.Packet.Applicative as A
 import qualified Control.Remote.Packet.Query       as Q
---import           Control.Remote.Packet.Strong      (HStrongPacket (..),
---                                                    StrongPacket)
+import           Control.Remote.Packet.Strong      (HStrongPacket (..),
+                                                    StrongPacket)
 import qualified Control.Remote.Packet.Strong      as Strong
 import           Control.Remote.Packet.Weak        (WeakPacket)
 import qualified Control.Remote.Packet.Weak        as Weak
@@ -61,8 +62,8 @@ class RunApplicative f where
 instance RunApplicative WeakPacket where
   runApplicative = runWeakApplicative
 
---instance RunApplicative StrongPacket where
---  runApplicative = runStrongApplicative
+instance RunApplicative StrongPacket where
+  runApplicative = runStrongApplicative
 
 instance RunApplicative ApplicativePacket where
   runApplicative = runApplicativeApplicative
@@ -89,25 +90,23 @@ runWeakApplicative (NT rf) = wrapNT go
     go2 (T.Pure      a)    = pure a
     go2 T.Empty            = empty
     go2 (T.Alt g h)        = go2 g <|> go2 h
-{-
+
 -- | The strong remote applicative, that bundles together commands.
 runStrongApplicative :: forall m prim . (MonadThrow m, KnownResult prim) => (StrongPacket prim :~> m) -> (RemoteApplicative prim :~> m)
 runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     (r,HStrongPacket h) <- runStateT (runMaybeT (go p)) (HStrongPacket id)
     rf $ h $ Strong.Done
     case r of
-      Just a -> return a
+      Just a  -> return a
       Nothing -> throwM RemoteEmptyException
   where
     go :: RemoteApplicative prim a -> MaybeT (StateT (HStrongPacket prim) m) a
     go (T.Pure a)      = return a
     go (T.Primitive p) =
-      case knownResult p of
-        Just a -> lift $ do
-                             () <-modify $ \ (HStrongPacket cs) -> HStrongPacket (cs  . Strong.Command  p)
-                             return a
+      case unitResult  p of
+        UnitResult -> lift $ modify $ \ (HStrongPacket cs) -> HStrongPacket (cs  . Strong.Command  p)
 
-        Nothing ->  lift $ do
+        UnknownResult ->  lift $ do
                               HStrongPacket cs <- get
                               put (HStrongPacket id)
                               r2 <- lift $ rf $ cs $ Strong.Procedure p
@@ -115,7 +114,7 @@ runStrongApplicative (NT rf) = wrapNT $ \ p -> do
     go (T.Ap g h)      = go g <*> go h
     go (T.Alt g h)     = go g <|> go h
     go (T.Empty )      = empty
--}
+
 
 -- | The applicative remote applicative, that is the identity function.
 runApplicativeApplicative :: forall m prim . (MonadThrow m) => (ApplicativePacket prim :~> m) -> (RemoteApplicative prim :~> m)
@@ -138,11 +137,11 @@ runQueryApplicative :: forall m q . (MonadThrow m) => (Q.QueryPacket q :~> m) ->
 runQueryApplicative (NT rf) = wrapNT (go4 . go3)
   where
     go3 :: forall a . RemoteApplicative q a -> Wrapper (Q.QueryPacket q) a
-    go3  T.Empty    = empty   --uses Throw'
-    go3 (T.Pure a)  = pure a
+    go3  T.Empty        = empty   --uses Throw'
+    go3 (T.Pure a)      = pure a
     go3 (T.Primitive q) = Value (Q.Primitive q)
-    go3 (T.Ap g h)  = go3 g <*> go3 h
-    go3 (T.Alt g h) = go3 g <|> go3 h
+    go3 (T.Ap g h)      = go3 g <*> go3 h
+    go3 (T.Alt g h)     = go3 g <|> go3 h
 
     go4 :: forall a . Wrapper (Q.QueryPacket q) a -> m a
     go4 (Value pkt)  = rf pkt
@@ -154,8 +153,8 @@ runAlternativeApplicative :: forall m prim . (MonadThrow m) => (AlternativePacke
 runAlternativeApplicative (NT rf) = wrapNT $ \p ->  rf $ go p
    where
       go :: forall a . RemoteApplicative prim a -> AlternativePacket prim a
-      go  T.Empty                = Alt.Empty
-      go (T.Pure a)              = pure a
-      go (T.Primitive p)         = Alt.Primitive p
-      go (T.Ap g h)              = go g <*> go h
-      go (T.Alt g h)             = go g <|> go h
+      go  T.Empty        = Alt.Empty
+      go (T.Pure a)      = pure a
+      go (T.Primitive p) = Alt.Primitive p
+      go (T.Ap g h)      = go g <*> go h
+      go (T.Alt g h)     = go g <|> go h

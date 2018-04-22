@@ -3,16 +3,16 @@
 {-# LANGUAGE TypeOperators  #-}
 
 module Main where
-import           Control.Monad                     (replicateM)
-import           Control.Natural
-import           Control.Remote.Monad              as T
-import qualified Control.Remote.Packet.Weak        as WP
---import qualified Control.Remote.Packet.Strong as SP
 import           Control.Applicative
 import           Control.Exception                 hiding (catch)
+import           Control.Monad                     (replicateM)
 import           Control.Monad.Catch
+import           Control.Natural
+import           Control.Remote.Monad              as T
 import qualified Control.Remote.Packet.Alternative as Alt
 import qualified Control.Remote.Packet.Applicative as AP
+import qualified Control.Remote.Packet.Strong      as SP
+import qualified Control.Remote.Packet.Weak        as WP
 
 
 data MyProc :: * -> * where
@@ -21,8 +21,11 @@ data MyProc :: * -> * where
 
 
 instance KnownResult MyProc where
-  knownResult (Say _s)       = pure ()
+  knownResult (Say _s)      = pure ()
   knownResult (Temperature) = Nothing
+
+  unitResult (Say _)     = UnitResult
+  unitResult Temperature = UnknownResult
 
 say :: String -> RemoteMonad MyProc ()
 say s = primitive (Say s)
@@ -31,38 +34,33 @@ temperature :: RemoteMonad MyProc Int
 temperature = primitive Temperature
 
 
+evalMyProc :: MyProc a -> IO a
+evalMyProc (Say s) = print s
+evalMyProc Temperature = do
+                           putStrLn "Temp Call"
+                           return 42
+
 --Server Side Functions
 ---------------------------------------------------------
 runWP ::  WP.WeakPacket MyProc a -> IO a
-runWP (WP.Primitive (Say s))       = print s
-runWP (WP.Primitive Temperature) = do
-                                 putStrLn "Temp Call"
-                                 return 42
+runWP (WP.Primitive p)       = evalMyProc p
 ---------------------------------------------------------
---runSP :: StrongPacket MyProc a -> IO a
---runSP (SP.Primitive (Say s) cs) =do
---                                print s
---                                runSP cs
---runSP (SP.Primitive Temperature) = do
---                                putStrLn "Temp Call"
---                                return 42
---runSP Done = return ()
+runSP :: SP.StrongPacket MyProc a -> IO a
+runSP (SP.Command c cs) =do
+                                evalMyProc c
+                                runSP cs
+runSP (SP.Procedure p) = evalMyProc p
+runSP SP.Done = return ()
 -----------------------------------------------------------
 runAP :: AP.ApplicativePacket MyProc a -> IO a
-runAP (AP.Primitive (Say s)) = print s
-runAP (AP.Primitive Temperature) =do
-                                    putStrLn "Temp Call"
-                                    return 42
+runAP (AP.Primitive p) = evalMyProc p
 runAP (AP.Zip f g h) = f <$> runAP g <*> runAP h
 runAP (AP.Pure a) = do
                        putStrLn "Pure"
                        return a
 ---------------------------------------------------------
 runAlt :: Alt.AlternativePacket MyProc a -> IO a
-runAlt (Alt.Primitive (Say s)) = print s
-runAlt (Alt.Primitive Temperature) = do
-                                  putStrLn "Temp Call"
-                                  return 42
+runAlt (Alt.Primitive p) = evalMyProc p
 runAlt (Alt.Zip f g h) = f <$> runAlt g <*> runAlt h
 runAlt (Alt.Pure a)    = return a
 runAlt (Alt.Alt g h)       = do
@@ -75,8 +73,8 @@ runAlt  Alt.Empty      = empty
 sendWeak :: RemoteMonad MyProc a -> IO a
 sendWeak = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runWP pkt)
 
--- sendStrong :: RemoteMonad MyProc a -> IO a
--- sendStrong = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runSP pkt)
+sendStrong :: RemoteMonad MyProc a -> IO a
+sendStrong = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runSP pkt)
 
 sendApp :: RemoteMonad MyProc a -> IO a
 sendApp = unwrapNT $ runMonad $ wrapNT (\pkt -> do putStrLn "-----"; runAP pkt)
@@ -91,8 +89,8 @@ main = do
         putStrLn "WeakSend\n"
         runTest $ wrapNT sendWeak
 
-        -- putStrLn "\nStrongSend\n"
-        -- runTest $ wrapNT sendStrong
+        putStrLn "\nStrongSend\n"
+        runTest $ wrapNT sendStrong
 
         putStrLn "\nAppSend\n"
         runTest $ wrapNT sendApp

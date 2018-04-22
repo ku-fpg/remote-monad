@@ -1,10 +1,10 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE KindSignatures      #-}
+{-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators       #-}
 
 
 {-|
@@ -18,25 +18,26 @@ Stability:   Experimental
 -}
 module Main (main) where
 
-import           Control.Natural (wrapNT,(:~>),(#))
 import           Control.Applicative
+import           Control.Natural                   ((:~>), wrapNT, ( # ))
 
-import qualified Control.Remote.Monad as M
-import           Control.Remote.Packet.Applicative as AP
-import qualified Control.Remote.Packet.Weak as WP
+import qualified Control.Remote.Applicative        as A
+import qualified Control.Remote.Monad              as M
 import qualified Control.Remote.Packet.Alternative as Alt
---import qualified Control.Remote.Packet.Strong as SP
-import qualified Control.Remote.Applicative as A
+import           Control.Remote.Packet.Applicative as AP
+import qualified Control.Remote.Packet.Strong      as SP
+import qualified Control.Remote.Packet.Weak        as WP
 
-import Test.QuickCheck
-import Test.QuickCheck.Instances ()
-import Test.Tasty (TestTree, defaultMain, testGroup)
-import Test.Tasty.QuickCheck (testProperty)
-import Test.QuickCheck.Poly (A)
-import Test.QuickCheck.Monadic
-import Test.QuickCheck.Gen.Unsafe (promote)
+import           Test.QuickCheck
+import           Test.QuickCheck.Gen.Unsafe        (promote)
+import           Test.QuickCheck.Instances         ()
+import           Test.QuickCheck.Monadic
+import           Test.QuickCheck.Poly              (A)
+import           Test.Tasty                        (TestTree, defaultMain,
+                                                    testGroup)
+import           Test.Tasty.QuickCheck             (testProperty)
 
-import Data.IORef
+import           Data.IORef
 
 main :: IO ()
 main = defaultMain testProperties
@@ -87,10 +88,10 @@ runWP tr ref (WP.Primitive Pop) = do
           return (Just x)
 
 
--- runSP :: IORef [String] -> IORef [A] -> SP.StrongPacket P a -> IO a
--- runSP tr ref (SP.Primitive   c pk) = runWP tr ref (WP.Primitive c) >> runSP tr ref pk
--- runSP tr ref (SP.Primitive p)    = runWP tr ref (WP.Primitive p)
--- runSP _  _    SP.Done            = pure ()
+runSP :: IORef [String] -> IORef [A] -> SP.StrongPacket P a -> IO a
+runSP tr ref (SP.Command   c pk) = runWP tr ref (WP.Primitive c) >> runSP tr ref pk
+runSP tr ref (SP.Procedure p)    = runWP tr ref (WP.Primitive p)
+runSP _  _    SP.Done            = pure ()
 
 runAppP :: IORef [String] -> IORef [A] -> ApplicativePacket P a -> IO a
 runAppP tr ref (AP.Primitive prim) = runWP tr ref (WP.Primitive prim)
@@ -119,7 +120,7 @@ instance Show RemoteApplicative where
 instance Arbitrary RemoteMonad where
   arbitrary = elements
     [ runMonadWeakPacket
---    , runMonadStrongPacket
+    , runMonadStrongPacket
     , runMonadApplicativePacket
     , runMonadAlternativePacket
     ]
@@ -127,7 +128,7 @@ instance Arbitrary RemoteMonad where
 instance Arbitrary RemoteApplicative where
   arbitrary = elements
     [ runApplicativeWeakPacket
---    , runApplicativeStrongPacket
+    , runApplicativeStrongPacket
     , runApplicativeApplicativePacket
     , runApplicativeAlternativePacket
     ]
@@ -139,9 +140,9 @@ runMonadWeakPacket :: RemoteMonad
 runMonadWeakPacket = RemoteMonad "MonadWeakPacket"
   $ \ tr ref -> M.runMonad (wrapNT $ runWP tr ref)
 
--- runMonadStrongPacket :: RemoteMonad
--- runMonadStrongPacket = RemoteMonad "MonadStrongPacket"
---   $ \ tr ref -> M.runMonad (wrapNT $ runSP tr ref)
+runMonadStrongPacket :: RemoteMonad
+runMonadStrongPacket = RemoteMonad "MonadStrongPacket"
+   $ \ tr ref -> M.runMonad (wrapNT $ runSP tr ref)
 
 runMonadApplicativePacket :: RemoteMonad
 runMonadApplicativePacket = RemoteMonad "MonadApplicativePacket"
@@ -156,9 +157,9 @@ runApplicativeWeakPacket :: RemoteApplicative
 runApplicativeWeakPacket = RemoteApplicative "ApplicativeWeakPacket"
   $ \ tr ref -> A.runApplicative (wrapNT $ runWP tr ref)
 
--- runApplicativeStrongPacket :: RemoteApplicative
--- runApplicativeStrongPacket = RemoteApplicative "ApplicativeStrongPacket"
---   $ \ tr ref -> A.runApplicative (wrapNT $ runSP tr ref)
+runApplicativeStrongPacket :: RemoteApplicative
+runApplicativeStrongPacket = RemoteApplicative "ApplicativeStrongPacket"
+   $ \ tr ref -> A.runApplicative (wrapNT $ runSP tr ref)
 
 runApplicativeApplicativePacket :: RemoteApplicative
 runApplicativeApplicativePacket = RemoteApplicative "ApplicativeApplicativePacket"
@@ -338,7 +339,7 @@ prop_popM runMe xs = monadicIO $ do
     r   <- run $ sendM dev (M.primitive Pop)
     ys  <- run $ readDeviceM  dev
     case xs of
-      [] -> assert (r == Nothing && null ys)
+      []       -> assert (r == Nothing && null ys)
       (x':xs') -> assert (r == Just x' && ys == xs')
 
 prop_popA :: RemoteApplicative -> [A] -> Property
@@ -347,7 +348,7 @@ prop_popA runMe xs = monadicIO $ do
     r   <- run $ sendA dev (A.primitive Pop)
     ys  <- run $ readDeviceA  dev
     case xs of
-      [] -> assert (r == Nothing && null ys)
+      []       -> assert (r == Nothing && null ys)
       (x':xs') -> assert (r == Just x' && ys == xs')
 
 -- Check that two remote monad configurations given the same trace and same result

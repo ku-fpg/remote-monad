@@ -1,6 +1,13 @@
 How to run the benchmarks
 =========================
+## Stack
+Inside the root directory of the project, run
 
+    % stack build --bench 
+
+Results are found in bench.csv and bench.html
+
+## Cabal
 Inside the root directory of the project, run
 
     % cabal configure --enable-benchmarks && cabal build && cabal bench
