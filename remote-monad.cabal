@@ -54,6 +54,7 @@ tested-with:         GHC == 7.10.3
                    , GHC == 8.0.2
                    , GHC == 8.2.2
                    , GHC == 8.4.3
+                   , GHC == 8.6.1
 cabal-version:       >=1.10
 extra-source-files:  CHANGELOG.md, README.md
 
@@ -112,7 +113,7 @@ test-suite remote-monad-properties
   type:                exitcode-stdio-1.0
   main-is:             Test.hs
   build-depends:       base                   >= 4.7 && < 5
-                     , containers             >= 0.1 && < 0.6
+                     , containers             >= 0.1 && < 0.7
                      , natural-transformation >= 0.4 && < 0.5
                      , remote-monad
                      , QuickCheck             >= 2.8 && < 2.12
