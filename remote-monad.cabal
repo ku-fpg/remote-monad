@@ -116,7 +116,7 @@ test-suite remote-monad-properties
                      , containers             >= 0.1 && < 0.7
                      , natural-transformation >= 0.4 && < 0.5
                      , remote-monad
-                     , QuickCheck             >= 2.8 && < 2.12
+                     , QuickCheck             >= 2.8 && < 2.13
                      , quickcheck-instances   >= 0.1 && < 0.4
                      , tasty                  >= 0.8 && < 1.2
                      , tasty-quickcheck       >= 0.8 && < 0.11
